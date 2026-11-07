@@ -133,7 +133,7 @@ public class MenuView extends View {
             return;
         }
         c.drawText(title, pad, pad + 7 * d, head);
-        Skin.softKey(c, "BACK", w - 24 * d, pad + 10 * d, head, softKeyMark, d);
+        Skin.softKey(c, "BACK", w - 18 * d, 18 * d, head, softKeyMark, d);
 
         float y = top + 8 * d, rh = rowHeight();
         int visible = Math.max(1, (int) ((bottom - y) / rh)), n = labels.length;
@@ -147,19 +147,7 @@ public class MenuView extends View {
                 c.drawText(labels[i], pad, y + 13 * d, key);
                 c.drawText(details[i], pad + kc, y + 13 * d, small);
             }
-            if (footer != null && footer.length > 0) {             // centred: heart + the ask, then the addresses
-                float fy = Math.max(y, top + 8 * d + Math.min(n, visible) * rh) + 14 * d;
-                small.setTextAlign(Paint.Align.LEFT);
-                float tw = small.measureText(footer[0]), hs = 4 * d, x0 = (w - (tw + 4 * hs)) / 2;
-                glyph.setStyle(Paint.Style.FILL); glyph.setColor(Legend.HEART_PINK);
-                Legend.heart(c, x0 + hs, fy - 3.5f * d, hs, glyph);
-                small.setColor(0xFFFFFFFF);
-                c.drawText(footer[0], x0 + 4 * hs, fy, small);
-                small.setColor(0xCCF2B85C);
-                small.setTextAlign(Paint.Align.CENTER);
-                for (int k = 1; k < footer.length; k++) c.drawText(footer[k], w / 2, fy + k * 16 * d, small);
-                small.setTextAlign(Paint.Align.LEFT);
-            }
+            // Tip footer removed as requested
         } else {
             for (int i = first; i < Math.min(n, first + visible); i++, y += rh) {
                 boolean on = i == selected;
@@ -172,15 +160,15 @@ public class MenuView extends View {
                     outline.setStrokeWidth(1.5f * d);
                     c.drawRoundRect(r, 4 * d, 4 * d, outline);
                 }
-                item.setColor(on ? ACCENT : 0xFFFFFFFF);
+                item.setColor(0xFFFFFFFF);
                 float tx = pad;
                 if (icons != null && i < icons.length) {             // the row's icon, then its text beside it
-                    glyph.setColor(on ? INK : ACCENT);
+                    glyph.setColor(ACCENT);
                     drawIcon(c, icons[i], pad + 9 * d, y + rh / 2 - 1.5f * d, 7 * d);
                     tx = pad + 26 * d;
                 }
                 c.drawText(labels[i], tx, y + 16 * d, item);
-                small.setColor(on ? 0xCC1A1208 : 0x99FFFFFF);
+                small.setColor(0xDDFFFFFF);
                 c.drawText(details[i], tx, y + 29 * d, small);
                 if (values[i] != null) {
                     value.setTypeface(valueFaces[i] != null ? valueFaces[i] : face);
@@ -191,7 +179,7 @@ public class MenuView extends View {
         }
         c.drawLine(pad, legTop - 2 * d, w - pad, legTop - 2 * d, rule);
         legend.drawWrapped(c, pad, legTop, w - 2 * pad - 80 * d, hints);
-        Skin.softKey(c, "EXIT", w - 24 * d, legTop + 8 * d, head, softKeyMark, d);
+        Skin.softKey(c, "EXIT", w - 18 * d, h - 18 * d, head, softKeyMark, d);
     }
 
     /**

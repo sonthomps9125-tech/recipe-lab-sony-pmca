@@ -910,7 +910,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private void renderMenu() {
         if (menuPage == PAGE_ABOUT) menu.setPage(DevTools.aboutTitle(), DevTools.about(versionName(), KeyProbe.prop("model.name"),
-                KeyProbe.firmware(), KeyProbe.prop("version.platform")), DevTools.aboutFooter(), Keys.hints(Keys.H_PAGE, caps));
+                KeyProbe.firmware(), KeyProbe.prop("version.platform")), null, Keys.hints(Keys.H_PAGE, caps));
         else if (menuPage == PAGE_TRANSFER && transfer != null) menu.setTransfer(transferSync ? DevTools.syncTitle() : DevTools.transferTitle(),
                 DevTools.transferPage(transfer.state(), transfer.stats(), transfer.rate(), transferSync), Keys.hints(Keys.H_TRANSFER, caps));
         else {
@@ -1914,13 +1914,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             for (Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
             camera.setParameters(p);
             previewOk = true;
-            Camera.Parameters back = camera.getParameters();     // what the camera kept: a dropped value throws nothing (#104)
-            Map<String, String> got = new java.util.HashMap<String, String>();
-            for (String k : wanted.keySet()) got.put(k, back.get(k));
-            String dropped = CardLog.previewDropped(wanted, got);
-            if (dropped.length() > 0) logPreview(Recipes.displayName(library.get(recipe)) + ": not kept  " + dropped);
-            String mode = back.get(CardLog.MODE_KEY);              // read anyway: a dial turned with the app open costs nothing more
-            if (mode != null && !mode.equals(lastMode)) { log(CardLog.INFO, "mode " + lastMode + " > " + mode); lastMode = mode; }
         } catch (Throwable t) { previewOk = false; previewErr = String.valueOf(t.getMessage()); logPreview("parameters refused: " + previewErr); }
     }
 
@@ -1979,13 +1972,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 paramIcons[i].set(i, Params.fmt(i, edit[i], edit), sel, foc, ch);
             }
             if (row == 0) {
-                chipScroll.post(new Runnable() { public void run() { chipScroll.smoothScrollTo(0, 0); } });
+                chipScroll.post(new Runnable() { public void run() { chipScroll.scrollTo(0, 0); } });
             } else if (paramIcons[row] != null) {
                 final View c = paramIcons[row];
                 chipScroll.post(new Runnable() { public void run() {
                     int t = c.getTop(), bot = c.getBottom(), sy = chipScroll.getScrollY(), h = chipScroll.getHeight();
-                    if (t < sy) chipScroll.smoothScrollTo(0, t - dp(6));
-                    else if (bot > sy + h) chipScroll.smoothScrollTo(0, bot - h + dp(6));
+                    if (t < sy) chipScroll.scrollTo(0, t - dp(6));
+                    else if (bot > sy + h) chipScroll.scrollTo(0, bot - h + dp(6));
                 } });
             }
             hints.setVisibility(View.GONE); updateExposureInfo();
@@ -1999,11 +1992,19 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     // ------------------------------------------------------------ input
+    private final Runnable applyPreviewTask = new Runnable() {
+        public void run() {
+            applyPreview();
+        }
+    };
+
     /** change the value of the focused chip */
     private void stepValue(int dir) {
         if (row == 0) return;
         if (Params.step(edit, row, dir, recipeQuality(library.get(recipe)))) qualityChanged();
-        applyPreview(); render(); handler.post(exposurePoll);
+        render(); // Immediate 0ms UI update!
+        handler.removeCallbacks(applyPreviewTask);
+        handler.postDelayed(applyPreviewTask, 60); // 60ms debounce for camera hardware update
     }
 
     /** left / right on the edit buttons, wrapping */

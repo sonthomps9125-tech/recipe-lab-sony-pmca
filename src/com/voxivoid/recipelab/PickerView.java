@@ -175,7 +175,7 @@ public class PickerView extends View {
         c.drawText(grpLabel, pad + 130 * d, pad + 12 * d, small);
 
         // Top right SoftKey 1: BACK ● (2.5x enlarged)
-        Skin.softKey(c, "BACK", w - 24 * d, pad + 10 * d, head, softKeyMark, d);
+        Skin.softKey(c, "BACK", w - 18 * d, 18 * d, head, softKeyMark, d);
 
         c.drawLine(pad, topH, w - pad, topH, rule);
 
@@ -251,7 +251,7 @@ public class PickerView extends View {
 
         // Right footer SoftKey 2: OPTION · Edit ● (2.5x enlarged)
         head.setColor(ACCENT);
-        Skin.softKey(c, "OPTION · Edit", w - 24 * d, h - footH / 2, head, softKeyMark, d);
+        Skin.softKey(c, "OPTION · Edit", w - 18 * d, h - 18 * d, head, softKeyMark, d);
         head.setColor(0xFFFFFFFF);
     }
 

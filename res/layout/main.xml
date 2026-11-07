@@ -4,7 +4,7 @@
     android:layout_height="fill_parent"
     android:background="#FF000000">
 
-    <!-- 1. Live camera preview surface fills screen with 3:2 hardware ratio -->
+    <!-- 1. Live camera preview surface fills screen -->
     <SurfaceView
         android:id="@+id/surface"
         android:layout_width="fill_parent"
@@ -14,7 +14,7 @@
     <LinearLayout
         android:id="@+id/header_bar"
         android:layout_width="fill_parent"
-        android:layout_height="36dp"
+        android:layout_height="34dp"
         android:layout_gravity="top|left"
         android:orientation="horizontal"
         android:gravity="center_vertical"
@@ -25,8 +25,8 @@
 
         <!-- App Launcher Icon -->
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:src="@drawable/ic_launcher"
             android:layout_marginRight="6dp" />
 
@@ -34,7 +34,7 @@
             android:id="@+id/name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:textColor="#FFFFFFFF"
             android:shadowColor="#FF000000"
@@ -110,18 +110,19 @@
         android:paddingTop="2dp"
         android:paddingBottom="2dp">
 
-        <!-- Top Right SoftKey 1: EXIT ● (2.5x larger: 44dp height, 18sp text) -->
+        <!-- Top Right SoftKey 1: EXIT ● (Aligned with SK1, standard Sony size) -->
         <TextView
             android:id="@+id/exit_btn"
             android:layout_width="fill_parent"
-            android:layout_height="44dp"
-            android:gravity="center"
+            android:layout_height="32dp"
+            android:gravity="right|center_vertical"
+            android:paddingRight="4dp"
             android:text="EXIT ●"
-            android:textSize="16sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="#FFFFFFFF"
             android:shadowColor="#FF000000"
-            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="3" />
+            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="2" />
 
         <!-- Hidden compat elements for MainActivity -->
         <TextView
@@ -142,12 +143,14 @@
             android:layout_height="wrap_content"
             android:visibility="gone" />
 
-        <!-- Vertical parameter icon container (pure graphic tiles) -->
+        <!-- Vertical parameter icon container with 12dp top margin so tiles are not overlapped by top bar -->
         <ScrollView
             android:id="@+id/chipscroll"
             android:layout_width="fill_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp"
             android:scrollbars="none">
             <LinearLayout
                 android:id="@+id/chips"
@@ -168,18 +171,19 @@
             android:paddingBottom="2dp"
             android:visibility="gone" />
 
-        <!-- Bottom Right SoftKey 2: OPTION ● (2.5x larger: 44dp height, 14sp text) -->
+        <!-- Bottom Right SoftKey 2: OPTION ● (Aligned with SK2, standard Sony size) -->
         <TextView
             android:id="@+id/option_btn"
             android:layout_width="fill_parent"
-            android:layout_height="44dp"
-            android:gravity="center"
+            android:layout_height="32dp"
+            android:gravity="right|center_vertical"
+            android:paddingRight="4dp"
             android:text="OPTION ●"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="#FFF2B85C"
             android:shadowColor="#FF000000"
-            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="3" />
+            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="2" />
 
         <com.voxivoid.recipelab.HintBar
             android:id="@+id/hints"
