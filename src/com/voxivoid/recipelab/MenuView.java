@@ -29,6 +29,8 @@ public class MenuView extends View {
     private final Paint glyph = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF box = new RectF();
     private final Legend legend;
+    private final Paint[] softKeyMark;
+    private final Paint outline = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float d;
     private String title = "";
     private String[] labels = new String[0], details = new String[0], values = new String[0];
@@ -50,7 +52,8 @@ public class MenuView extends View {
         super(c, a);
         d = c.getResources().getDisplayMetrics().density;
         legend = new Legend(d);
-        bg.setColor(0xF0101010);
+        softKeyMark = Skin.metalMark();
+        bg.setColor(0xFF101010);
         head.setColor(ACCENT); head.setTextSize(9 * d); head.setFakeBoldText(true);
         item.setTextSize(13 * d); item.setFakeBoldText(true);
         small.setTextSize(10 * d);
@@ -130,6 +133,7 @@ public class MenuView extends View {
             return;
         }
         c.drawText(title, pad, pad + 7 * d, head);
+        Skin.softKey(c, "BACK", w - 18 * d, 18 * d, head, softKeyMark, d);
 
         float y = top + 8 * d, rh = rowHeight();
         int visible = Math.max(1, (int) ((bottom - y) / rh)), n = labels.length;
@@ -143,32 +147,28 @@ public class MenuView extends View {
                 c.drawText(labels[i], pad, y + 13 * d, key);
                 c.drawText(details[i], pad + kc, y + 13 * d, small);
             }
-            if (footer != null && footer.length > 0) {             // centred: heart + the ask, then the addresses
-                float fy = Math.max(y, top + 8 * d + Math.min(n, visible) * rh) + 14 * d;
-                small.setTextAlign(Paint.Align.LEFT);
-                float tw = small.measureText(footer[0]), hs = 4 * d, x0 = (w - (tw + 4 * hs)) / 2;
-                glyph.setStyle(Paint.Style.FILL); glyph.setColor(Legend.HEART_PINK);
-                Legend.heart(c, x0 + hs, fy - 3.5f * d, hs, glyph);
-                small.setColor(0xFFFFFFFF);
-                c.drawText(footer[0], x0 + 4 * hs, fy, small);
-                small.setColor(0xCCF2B85C);
-                small.setTextAlign(Paint.Align.CENTER);
-                for (int k = 1; k < footer.length; k++) c.drawText(footer[k], w / 2, fy + k * 16 * d, small);
-                small.setTextAlign(Paint.Align.LEFT);
-            }
+            // Tip footer removed as requested
         } else {
             for (int i = first; i < Math.min(n, first + visible); i++, y += rh) {
                 boolean on = i == selected;
-                if (on) { r.set(pad - 6 * d, y, right + 6 * d, y + rh - 3 * d); row.setColor(ACCENT); c.drawRoundRect(r, 4 * d, 4 * d, row); }
-                item.setColor(on ? INK : 0xFFFFFFFF);
+                if (on) {
+                    r.set(pad - 6 * d, y, right + 6 * d, y + rh - 3 * d);
+                    row.setColor(0x33F2B85C);
+                    c.drawRoundRect(r, 4 * d, 4 * d, row);
+                    outline.setColor(ACCENT);
+                    outline.setStyle(Paint.Style.STROKE);
+                    outline.setStrokeWidth(1.5f * d);
+                    c.drawRoundRect(r, 4 * d, 4 * d, outline);
+                }
+                item.setColor(0xFFFFFFFF);
                 float tx = pad;
                 if (icons != null && i < icons.length) {             // the row's icon, then its text beside it
-                    glyph.setColor(on ? INK : ACCENT);
+                    glyph.setColor(ACCENT);
                     drawIcon(c, icons[i], pad + 9 * d, y + rh / 2 - 1.5f * d, 7 * d);
                     tx = pad + 26 * d;
                 }
                 c.drawText(labels[i], tx, y + 16 * d, item);
-                small.setColor(on ? 0xCC1A1208 : 0x99FFFFFF);
+                small.setColor(0xDDFFFFFF);
                 c.drawText(details[i], tx, y + 29 * d, small);
                 if (values[i] != null) {
                     value.setTypeface(valueFaces[i] != null ? valueFaces[i] : face);
@@ -178,7 +178,8 @@ public class MenuView extends View {
             if (scroll) scrollbar(c, w - pad - sbW + 4 * d, listTop, visible * rh, sbW, first, visible, n);
         }
         c.drawLine(pad, legTop - 2 * d, w - pad, legTop - 2 * d, rule);
-        legend.drawWrapped(c, pad, legTop, w - 2 * pad, hints);
+        legend.drawWrapped(c, pad, legTop, w - 2 * pad - 80 * d, hints);
+        Skin.softKey(c, "EXIT", w - 18 * d, h - 18 * d, head, softKeyMark, d);
     }
 
     /**
