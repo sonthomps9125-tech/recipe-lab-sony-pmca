@@ -1,42 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Sony NEX-6 16:9 Wide Layout for Recipe Lab -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:background="#FF000000">
 
-    <!-- 1. Live view preview surface (positioned on the left in 3:2 aspect ratio) -->
+    <!-- 1. Live camera preview surface fills screen with 3:2 hardware ratio -->
     <SurfaceView
         android:id="@+id/surface"
-        android:layout_width="480dp"
-        android:layout_height="fill_parent"
-        android:layout_gravity="left|center_vertical" />
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
 
-    <!-- 2. Top OSD Bar across 3:2 frame: Faded by 65% (#59000000) showing recipe title and badges -->
+    <!-- 2. Top OSD Bar: Faded 65% (#59000000 / alpha 35%) showing recipe title and badges -->
     <LinearLayout
         android:id="@+id/header_bar"
-        android:layout_width="480dp"
-        android:layout_height="34dp"
+        android:layout_width="fill_parent"
+        android:layout_height="36dp"
         android:layout_gravity="top|left"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="#59000000"
         android:paddingLeft="10dp"
-        android:paddingRight="10dp"
+        android:paddingRight="60dp"
         android:visibility="gone">
 
-        <!-- App Icon -->
-        <View
-            android:layout_width="14dp"
-            android:layout_height="14dp"
-            android:background="#FF1E88E5"
+        <!-- App Launcher Icon -->
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_launcher"
             android:layout_marginRight="6dp" />
 
         <TextView
             android:id="@+id/name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="15sp"
+            android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#FFFFFFFF"
             android:shadowColor="#FF000000"
@@ -91,38 +89,39 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- 3. Bottom Camera Exposure Bar across 3:2 frame: 1/125 F4.0 [EV] +0.3 [ISO] 400 -->
+    <!-- 3. Bottom Camera Exposure Bar: 1/125 F4.0 [EV] +0.3 [ISO] 400 -->
     <com.voxivoid.recipelab.ExposureBar
         android:id="@+id/exposure_bar"
-        android:layout_width="480dp"
+        android:layout_width="fill_parent"
         android:layout_height="32dp"
         android:layout_gravity="bottom|left"
         android:visibility="gone" />
 
-    <!-- 4. Dedicated Right Control Sidebar (in the 16:9 black pillarbox zone) -->
+    <!-- 4. Right Control Sidebar: tight to right edge, compact 54dp, 35% translucent (#59000000) -->
     <LinearLayout
         android:id="@+id/panel"
-        android:layout_width="160dp"
+        android:layout_width="54dp"
         android:layout_height="fill_parent"
         android:layout_gravity="right"
         android:orientation="vertical"
-        android:background="#FF121212"
-        android:paddingLeft="6dp"
-        android:paddingRight="6dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp">
+        android:background="#59000000"
+        android:paddingLeft="2dp"
+        android:paddingRight="2dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
 
-        <!-- Top Right SoftKey 1: EXIT ● -->
+        <!-- Top Right SoftKey 1: EXIT ● (2.5x larger: 44dp height, 18sp text) -->
         <TextView
             android:id="@+id/exit_btn"
             android:layout_width="fill_parent"
-            android:layout_height="26dp"
-            android:gravity="right|center_vertical"
-            android:paddingRight="4dp"
+            android:layout_height="44dp"
+            android:gravity="center"
             android:text="EXIT ●"
-            android:textSize="11sp"
+            android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFFFF" />
+            android:textColor="#FFFFFFFF"
+            android:shadowColor="#FF000000"
+            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="3" />
 
         <!-- Hidden compat elements for MainActivity -->
         <TextView
@@ -158,38 +157,33 @@
                 android:gravity="center_horizontal" />
         </ScrollView>
 
-        <!-- Edit actions row: [ Apply ] and [ Discard ] -->
+        <!-- Edit actions: [ Apply ] and [ Discard ] stacked compactly -->
         <LinearLayout
             android:id="@+id/actions"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
             android:visibility="gone" />
 
-        <!-- Bottom Right SoftKey 2: OPTION · Edit ● -->
+        <!-- Bottom Right SoftKey 2: OPTION ● (2.5x larger: 44dp height, 14sp text) -->
         <TextView
             android:id="@+id/option_btn"
             android:layout_width="fill_parent"
-            android:layout_height="26dp"
-            android:gravity="right|center_vertical"
-            android:paddingRight="4dp"
-            android:text="OPTION · Edit ●"
-            android:textSize="11sp"
+            android:layout_height="44dp"
+            android:gravity="center"
+            android:text="OPTION ●"
+            android:textSize="13sp"
             android:textStyle="bold"
-            android:textColor="#FFF2B85C" />
+            android:textColor="#FFF2B85C"
+            android:shadowColor="#FF000000"
+            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="3" />
 
         <com.voxivoid.recipelab.HintBar
             android:id="@+id/hints"
             android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
-
-        <com.voxivoid.recipelab.SponsorLine
-            android:id="@+id/sponsor"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone" />
     </LinearLayout>
@@ -216,7 +210,7 @@
         android:layout_height="fill_parent"
         android:visibility="gone" />
 
-    <!-- QR code sharing & scanner view (from v1.13.0) -->
+    <!-- QR code sharing & scanner view -->
     <com.voxivoid.recipelab.QrView
         android:id="@+id/qr"
         android:layout_width="fill_parent"

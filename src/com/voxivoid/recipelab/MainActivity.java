@@ -131,7 +131,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private boolean transferSync;                               // the page was opened as Sync recipes: same link, its own words
     private Keys.Caps caps = Keys.Caps.UNKNOWN;                 // the shortcut keys this body reports (KeyProbe)
     private HintBar hints;
-    private SponsorLine sponsor;
     private LinearLayout chips;
     private final TextView[] chipLabel = new TextView[N], chipValue = new TextView[N];
     private final View[] chip = new View[N];
@@ -206,7 +205,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         count = (TextView) findViewById(R.id.count);
         meta = (TextView) findViewById(R.id.meta);
         hints = (HintBar) findViewById(R.id.hints);
-        sponsor = (SponsorLine) findViewById(R.id.sponsor);
         mini = (TextView) findViewById(R.id.mini);
         toast = (TextView) findViewById(R.id.toast);
         prompt = (PromptView) findViewById(R.id.prompt);
@@ -326,65 +324,19 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
     };
 
-    /** Reads live shutter speed, aperture, and ISO from CameraEx listeners and camera parameters */
+    /** Reads live shutter speed, aperture, and ISO from CameraEx listeners */
     private void updateExposureInfo() {
         if (exposureBar == null) return;
-        String ss = null, ap = null, iso = null;
         try {
-        if (live != null) {
-            live.setEv(edit[R_EV] / 3.0f);
-            String lSs = live.shutter();
-            String lAp = live.aperture();
-            String lIso = live.iso();
-            if (!"--".equals(lSs)) ss = lSs;
-            if (!"--".equals(lAp)) ap = lAp;
-            if (!"--".equals(lIso)) iso = lIso;
-        }
-        if (ss == null || ap == null || iso == null) {
-            if (cameraEx != null) {
-                try {
-                    Object ssi = cameraEx.getClass().getMethod("getShutterSpeedInfo").invoke(cameraEx);
-                    if (ssi != null) {
-                        int n = ssi.getClass().getField("currentShutterSpeed_n").getInt(ssi);
-                        int d = ssi.getClass().getField("currentShutterSpeed_d").getInt(ssi);
-                        if (d > 0) {
-                            if (n == 1) ss = "1/" + d;
-                            else if (d == 1) ss = n + "\"";
-                            else ss = String.format(Locale.US, "%.1f\"", (double) n / d);
-                        }
-                    }
-                } catch (Throwable t) {}
-                try {
-                    Object api = cameraEx.getClass().getMethod("getApertureInfo").invoke(cameraEx);
-                    if (api != null) {
-                        int a = api.getClass().getField("currentAperture").getInt(api);
-                        if (a > 0) ap = String.format(Locale.US, "F%.1f", a / 100.0);
-                    }
-                } catch (Throwable t) {}
-                try {
-                    Object isoi = cameraEx.getClass().getMethod("getISOSensitivity").invoke(cameraEx);
-                    if (isoi != null) iso = String.valueOf(isoi);
-                } catch (Throwable t) {}
+            String ss = "--", ap = "--", iso = "--";
+            if (live != null) {
+                live.setEv(edit[R_EV] / 3.0f);
+                ss = live.shutter();
+                ap = live.aperture();
+                iso = live.iso();
             }
-        }
-        if (camera != null) {
-            try {
-                Camera.Parameters p = camera.getParameters();
-                if (ss == null) ss = p.get("shutter-speed");
-                if (ap == null) {
-                    String pAp = p.get("aperture");
-                    if (pAp == null) pAp = p.get("f-number");
-                    if (pAp != null && !pAp.isEmpty()) ap = pAp.startsWith("F") || pAp.startsWith("f") ? pAp : "F" + pAp;
-                }
-                if (iso == null) {
-                    String pIso = p.get("iso");
-                    if (pIso == null) pIso = p.get("sony-iso");
-                    if (pIso != null && !pIso.isEmpty()) iso = pIso;
-                }
-            } catch (Throwable t) {}
-        }
-        String ev = Params.fmt(R_EV, edit[R_EV], edit);
-        exposureBar.show(ss, ap, ev, iso);
+            String ev = Params.fmt(R_EV, edit[R_EV], edit);
+            exposureBar.show(ss, ap, ev, iso);
         } catch (Throwable t) {}
     }
 
@@ -517,14 +469,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void buildActions() {
         for (int i = 0; i < actionBtn.length; i++) {
             TextView b = new TextView(this);
-            b.setTextSize(11);
+            b.setTextSize(10);
             b.setTypeface(Typeface.DEFAULT_BOLD);
             b.setSingleLine(true);
             b.setGravity(Gravity.CENTER);
-            b.setPadding(dp(8), dp(4), dp(8), dp(4));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.leftMargin = dp(2);
-            lp.rightMargin = dp(2);
+            b.setPadding(dp(2), dp(3), dp(2), dp(3));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.topMargin = dp(2);
+            lp.bottomMargin = dp(2);
             b.setLayoutParams(lp);
             actionsRow.addView(b);
             actionBtn[i] = b;
@@ -537,7 +489,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         Lang.use(Lang.resolve(langChoice, l == null ? null : l.getLanguage(), l == null ? null : l.getCountry()));
         Typeface tf = UiFont.of(this, Lang.current());
         UiFont.apply(findViewById(android.R.id.content), tf);
-        picker.setTypeface(tf); prompt.setTypeface(tf); menu.setTypeface(tf); qr.setTypeface(tf); hints.setTypeface(tf); keyboard.setTypeface(tf); sponsor.setTypeface(tf);
+        picker.setTypeface(tf); prompt.setTypeface(tf); menu.setTypeface(tf); qr.setTypeface(tf); hints.setTypeface(tf); keyboard.setTypeface(tf);
         if (exposureBar != null) exposureBar.setTypeface(tf);
         for (ParamIconView pv : paramIcons) { if (pv != null) pv.setTypeface(tf); }
     }
@@ -557,7 +509,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             holder.addCallback(this);
             previewOk = true;
         } catch (Throwable t) { previewOk = false; previewErr = String.valueOf(t); logPreview("camera did not open: " + previewErr); }
-        logOpen();
+        new Thread(new Runnable() { public void run() { logOpen(); } }).start();
         showRecipe();                                          // with the edits last applied, when the camera still holds them
         applyPreview(); render(); handler.post(exposurePoll);
         if (!prefs.getBoolean("keysNoticeSeen", false)) {               // the keys moved in this build (issue #18): say so once
@@ -1375,7 +1327,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     /** the QR screen over everything the panel shows */
     private void showQr() {
-        panel.setVisibility(View.GONE); mini.setVisibility(View.GONE); picker.setVisibility(View.GONE); sponsor.setVisibility(View.GONE);
+        panel.setVisibility(View.GONE); mini.setVisibility(View.GONE); picker.setVisibility(View.GONE);
         qr.setVisibility(View.VISIBLE);
     }
 
@@ -1453,7 +1405,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void keepCover(int sc) {
         log(CardLog.QR, "key " + sc + " while busy: screen " + (qr.isShown() ? "shown" : "hidden")
                 + ", window " + (hasWindowFocus() ? "focused" : "not focused"));
-        panel.setVisibility(View.GONE); mini.setVisibility(View.GONE); picker.setVisibility(View.GONE); sponsor.setVisibility(View.GONE);
+        panel.setVisibility(View.GONE); mini.setVisibility(View.GONE); picker.setVisibility(View.GONE);
         qr.setVisibility(View.VISIBLE);
         qr.bringToFront();
         qr.invalidate();
@@ -1984,8 +1936,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         boolean dirty = dirty();
         String pos = Favorites.wheelPosition(wheelGroup, recipe, favs, library);
         picker.setVisibility(overlay == OV_BROWSER ? View.VISIBLE : View.GONE);
-        sponsor.setText(DevTools.sponsorLine());                     // the README's ask, small, over the live view
-        sponsor.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);   // Full and No keys; Label and Hidden hide it
         if (overlay == OV_BROWSER) { panel.setVisibility(View.GONE); mini.setVisibility(View.GONE); picker.set(recipe, browserCol, browserGroup, favs, library, cardDir != null); return; }
         if (headerBar != null) headerBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
         if (exposureBar != null) exposureBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);

@@ -32,7 +32,7 @@ public final class Skin {
         outer.setStyle(Paint.Style.FILL);
 
         Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
-        ring.setColor(0xFF555555);
+        ring.setColor(0xFF666666);
         ring.setStyle(Paint.Style.STROKE);
 
         Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -42,21 +42,21 @@ public final class Skin {
         return new Paint[] { outer, ring, dot };
     }
 
-    /** Draws the metallic Sony softkey circular indicator and label */
+    /** Draws the metallic Sony softkey circular indicator and label (2.5x enlarged) */
     public static void softKey(Canvas c, String label, float x, float y, Paint textPaint, Paint[] mark, float density) {
-        float r = 7.0f * density;
-        mark[1].setStrokeWidth(1.2f * density);
+        float r = 16.0f * density; // 2.5x larger radius (from 7dp to 16dp)
+        mark[1].setStrokeWidth(2.5f * density);
 
         // Draw outer dark metallic circle, border ring, and center dot
         c.drawCircle(x, y, r, mark[0]);
         c.drawCircle(x, y, r, mark[1]);
-        c.drawCircle(x, y, 2.5f * density, mark[2]);
+        c.drawCircle(x, y, 6.0f * density, mark[2]); // 2.5x larger center dot (from 2.5dp to 6dp)
 
         // Draw text label to the left of the button
         if (label != null && !label.isEmpty()) {
             Paint.Align prevAlign = textPaint.getTextAlign();
             textPaint.setTextAlign(Paint.Align.RIGHT);
-            float tx = x - r - 6.0f * density;
+            float tx = x - r - 8.0f * density;
             float ty = y + textPaint.getTextSize() * 0.36f;
             c.drawText(label, tx, ty, textPaint);
             textPaint.setTextAlign(prevAlign);

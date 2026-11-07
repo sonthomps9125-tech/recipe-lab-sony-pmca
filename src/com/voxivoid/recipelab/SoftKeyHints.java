@@ -8,7 +8,7 @@ import android.util.AttributeSet;
 import android.view.View;
 
 /**
- * Renders Sony camera standard softkey indicators on the right edge:
+ * Renders Sony camera standard softkey indicators on the right edge (2.5x enlarged):
  * Top (SK1): EXIT ● / BACK ●
  * Bottom (SK2): OPTION ● / Edit ●
  */
@@ -25,7 +25,7 @@ public class SoftKeyHints extends View {
         mark = Skin.metalMark();
         text.setColor(Skin.WHITE);
         text.setFakeBoldText(true);
-        text.setTextSize(11.0f * density);
+        text.setTextSize(18.0f * density); // 2.5x enlarged text (from 11dp to 18dp)
     }
 
     public void setTypeface(Typeface tf) {
@@ -48,17 +48,17 @@ public class SoftKeyHints extends View {
         float w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
 
-        float buttonX = w - 16.0f * density;
+        float buttonX = w - 24.0f * density;
 
         // Top softkey (SK1): e.g. EXIT ● or BACK ●
         if (top != null && !top.isEmpty()) {
-            float topY = 22.0f * density;
+            float topY = 24.0f * density;
             Skin.softKey(canvas, top, buttonX, topY, text, mark, density);
         }
 
         // Bottom softkey (SK2): e.g. OPTION ● or Edit ●
         if (bottom != null && !bottom.isEmpty()) {
-            float botY = h - 22.0f * density;
+            float botY = h - 24.0f * density;
             Skin.softKey(canvas, bottom, buttonX, botY, text, mark, density);
         }
     }

@@ -53,7 +53,7 @@ public class MenuView extends View {
         d = c.getResources().getDisplayMetrics().density;
         legend = new Legend(d);
         softKeyMark = Skin.metalMark();
-        bg.setColor(0xF0101010);
+        bg.setColor(0xFF101010);
         head.setColor(ACCENT); head.setTextSize(9 * d); head.setFakeBoldText(true);
         item.setTextSize(13 * d); item.setFakeBoldText(true);
         small.setTextSize(10 * d);
@@ -133,7 +133,7 @@ public class MenuView extends View {
             return;
         }
         c.drawText(title, pad, pad + 7 * d, head);
-        Skin.softKey(c, "BACK", w - 16 * d, pad + 7 * d, head, softKeyMark, d);
+        Skin.softKey(c, "BACK", w - 24 * d, pad + 10 * d, head, softKeyMark, d);
 
         float y = top + 8 * d, rh = rowHeight();
         int visible = Math.max(1, (int) ((bottom - y) / rh)), n = labels.length;
@@ -191,7 +191,7 @@ public class MenuView extends View {
         }
         c.drawLine(pad, legTop - 2 * d, w - pad, legTop - 2 * d, rule);
         legend.drawWrapped(c, pad, legTop, w - 2 * pad - 80 * d, hints);
-        Skin.softKey(c, "EXIT", w - 16 * d, legTop + 8 * d, head, softKeyMark, d);
+        Skin.softKey(c, "EXIT", w - 24 * d, legTop + 8 * d, head, softKeyMark, d);
     }
 
     /**
