@@ -188,29 +188,25 @@ public class PickerView extends View {
 
         c.drawLine(pad, topH, w - pad, topH, rule);
 
-        // ---- 2. Left / Center Area: Recipe Details & Cascading Sample Photos
+        // ---- 2. Left / Center Area: Recipe Title, Center Sample Photo & 3x3 Summary Badges
         if (lib.valid(selected)) {
             Recipes.Recipe rc = lib.get(selected);
             float lx = pad, ly = topH + 16 * d;
+            float maxTitleW = colX - lx - 8 * d;
 
-            // Big Recipe Title (Sony Amber)
-            c.drawText(Recipes.displayName(rc), lx, ly, titlePaint);
+            // Big Recipe Title (Sony Amber) with automatic 2-line wrap (especially for "(...)" suffixes)
+            String fullTitle = Recipes.displayName(rc);
+            float titleBottomY = drawWrappedTitle(c, fullTitle, lx, ly, maxTitleW);
 
-            // Subtitle description & parameter summary
-            String orig = Recipes.originalName(rc);
-            String desc = Recipes.groupLabel(rc.group) + "  ·  " + rc.summary();
-            if (orig != null && !orig.isEmpty()) desc = orig + "  (" + desc + ")";
-            c.drawText(desc, lx, ly + 13 * d, subPaint);
-
-            // Single center sample photo frame positioned exactly between subtitle and summary badges
-            float topBound = ly + 18 * d;
-            float bottomBound = listBottom - 38 * d;
+            // Single center sample photo frame positioned exactly between title bottom and 3x3 summary badges
+            float topBound = titleBottomY + 4 * d;
+            float bottomBound = listBottom - 54 * d; // Top of the 3-row summary badge block
             float cx = colX * 0.50f;
             float cy = (topBound + bottomBound) / 2.0f;
-            float maxH = bottomBound - topBound - 6 * d;
+            float maxH = Math.max(48 * d, bottomBound - topBound - 4 * d);
             drawCenterSampleFrame(c, cx, cy, maxH, colX - 2 * pad, selected);
 
-            // Bottom summary badges row: [RAW+J] [Style: ...] [WB: ...] [DRO: ...] [EV: ...]
+            // Bottom summary badges (3 rows x 3 boxes)
             drawSummaryRow(c, lx, listBottom, rc, colX);
         }
 
@@ -301,29 +297,86 @@ public class PickerView extends View {
         c.drawRoundRect(r, 2.5f * d, 2.5f * d, frameStroke);
     }
 
-    /** Parameter summary badges arranged into TWO rows, with 3 boxes per row */
+    /** Draws big recipe title, moving "(...)" or overflowing words to line 2 so it never touches the right column */
+    private float drawWrappedTitle(Canvas c, String title, float x, float y, float maxW) {
+        if (title == null) return y;
+        String line1 = title;
+        String line2 = null;
+
+        int parenIdx = title.indexOf(" (");
+        if (parenIdx > 0 && titlePaint.measureText(title) > maxW) {
+            line1 = title.substring(0, parenIdx).trim();
+            line2 = title.substring(parenIdx + 1).trim();
+        } else if (titlePaint.measureText(title) > maxW) {
+            int splitSpace = -1;
+            for (int i = 1; i < title.length(); i++) {
+                if (title.charAt(i) == ' ') {
+                    if (titlePaint.measureText(title, 0, i) <= maxW) {
+                        splitSpace = i;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            if (splitSpace > 0) {
+                line1 = title.substring(0, splitSpace).trim();
+                line2 = title.substring(splitSpace + 1).trim();
+            }
+        }
+
+        drawScaledTitleLine(c, line1, x, y, maxW);
+        if (line2 != null && !line2.isEmpty()) {
+            float y2 = y + 15 * d;
+            drawScaledTitleLine(c, line2, x, y2, maxW);
+            return y2 + 4 * d;
+        }
+        return y + 4 * d;
+    }
+
+    private void drawScaledTitleLine(Canvas c, String text, float x, float y, float maxW) {
+        float origSize = 15 * d;
+        titlePaint.setTextSize(origSize);
+        float tw = titlePaint.measureText(text);
+        if (tw > maxW && tw > 0) {
+            titlePaint.setTextSize(Math.max(10.5f * d, origSize * maxW / tw));
+        }
+        c.drawText(text, x, y, titlePaint);
+        titlePaint.setTextSize(origSize);
+    }
+
+    /** Parameter summary badges arranged into THREE rows, with 3 boxes per row (3x3 grid) */
     private void drawSummaryRow(Canvas c, float x, float listBottom, Recipes.Recipe rc, float colX) {
         float totalW = colX - x - 8 * d;
-        float gap = 4 * d;
+        float gap = 3.5f * d;
         float boxW = (totalW - 2 * gap) / 3.0f;
-        float boxH = 15 * d;
+        float boxH = 14.5f * d;
 
-        float y1 = listBottom - 22 * d;
-        float y2 = listBottom - 5 * d;
+        float y1 = listBottom - 37 * d;
+        float y2 = listBottom - 20.5f * d;
+        float y3 = listBottom - 4 * d;
 
-        // Row 1 (3 boxes): [Quality] [Style] [WB]
+        // Row 1 (3 boxes): [RAW+J] [Style / PE] [WB]
         fixedBadge(c, x, y1, boxW, boxH, "RAW+J", 0xFF262626, 0xCCFFFFFF);
-        fixedBadge(c, x + boxW + gap, y1, boxW, boxH, Recipes.styleLabel(rc.style), 0xFF262626, ACCENT);
+        String styleOrPe = rc.pe != 0 ? Recipes.peLabel(rc.pe) : Recipes.styleLabel(rc.style);
+        fixedBadge(c, x + boxW + gap, y1, boxW, boxH, styleOrPe, 0xFF262626, ACCENT);
         String wbText = rc.wbMode == 0 ? "WB: Keep" : rc.wbMode == 1 ? "WB: Auto" : rc.kelvin + "K";
         fixedBadge(c, x + (boxW + gap) * 2, y1, boxW, boxH, wbText, 0xFF262626, 0xCCFFFFFF);
 
-        // Row 2 (3 boxes): [Sat/Con/Shp] [DRO] [EV]
+        // Row 2 (3 boxes): [A-B] [G-M] [Sat/Con/Shp]
+        String abVal = rc.ab == 0 ? "0" : (rc.ab > 0 ? "A" + rc.ab : "B" + (-rc.ab));
+        fixedBadge(c, x, y2, boxW, boxH, "A-B: " + abVal, 0xFF262626, rc.ab != 0 ? ACCENT : 0xCCFFFFFF);
+        String gmVal = rc.gm == 0 ? "0" : (rc.gm > 0 ? "G" + rc.gm : "M" + (-rc.gm));
+        fixedBadge(c, x + boxW + gap, y2, boxW, boxH, "G-M: " + gmVal, 0xFF262626, rc.gm != 0 ? ACCENT : 0xCCFFFFFF);
         String scsText = (rc.sat > 0 ? "+" : "") + rc.sat + "/" + (rc.con > 0 ? "+" : "") + rc.con + "/" + (rc.sharp > 0 ? "+" : "") + rc.sharp;
-        fixedBadge(c, x, y2, boxW, boxH, scsText, 0xFF262626, 0xCCFFFFFF);
-        String droText = rc.dro == 0 ? "DRO: Off" : rc.dro == 1 ? "DRO: Auto" : "DRO: Lv" + rc.dro;
-        fixedBadge(c, x + boxW + gap, y2, boxW, boxH, droText, 0xFF262626, 0xCCFFFFFF);
+        fixedBadge(c, x + (boxW + gap) * 2, y2, boxW, boxH, scsText, 0xFF262626, 0xCCFFFFFF);
+
+        // Row 3 (3 boxes): [DRO] [EV] [Brand]
+        String droText = rc.dro == 0 ? "DRO: Off" : rc.dro == Recipes.DRO_AUTO ? "DRO: Auto" : "DRO: Lv" + rc.dro;
+        fixedBadge(c, x, y3, boxW, boxH, droText, 0xFF262626, 0xCCFFFFFF);
         String evText = "EV " + Params.fmt(Params.R_EV, rc.ev, null);
-        fixedBadge(c, x + (boxW + gap) * 2, y2, boxW, boxH, evText, 0xFF262626, rc.ev != 0 ? ACCENT : 0xCCFFFFFF);
+        fixedBadge(c, x + boxW + gap, y3, boxW, boxH, evText, 0xFF262626, rc.ev != 0 ? ACCENT : 0xCCFFFFFF);
+        String brandText = Recipes.groupLabel(rc.group);
+        fixedBadge(c, x + (boxW + gap) * 2, y3, boxW, boxH, brandText, 0xFF262626, 0xCCFFFFFF);
     }
 
     private void fixedBadge(Canvas c, float bx, float by, float bw, float bh, String text, int bgCol, int txtCol) {
