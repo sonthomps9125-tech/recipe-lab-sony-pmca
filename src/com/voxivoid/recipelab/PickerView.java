@@ -306,7 +306,7 @@ public class PickerView extends View {
     private void drawSummaryRow(Canvas c, float x, float y, Recipes.Recipe rc) {
         float rx = x;
         rx = badge(c, rx, y, "RAW+J", 0xFF282828, 0xCCFFFFFF);
-        rx = badge(c, rx + 6 * d, y, "Style: " + Recipes.styleName(rc.style), 0xFF282828, ACCENT);
+        rx = badge(c, rx + 6 * d, y, "Style: " + Recipes.styleLabel(rc.style), 0xFF282828, ACCENT);
         rx = badge(c, rx + 6 * d, y, rc.wbMode == 0 ? "WB: Keep" : rc.wbMode == 1 ? "WB: Auto" : "WB: " + rc.kelvin + "K", 0xFF282828, 0xCCFFFFFF);
         rx = badge(c, rx + 6 * d, y, rc.dro == 0 ? "DRO: Off" : rc.dro == 1 ? "DRO: Auto" : "DRO: Lv" + rc.dro, 0xFF282828, 0xCCFFFFFF);
         if (rc.ev != 0) {

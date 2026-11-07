@@ -384,6 +384,33 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         exposureBar.show(ss, ap, ev, iso);
     }
 
+
+    private static String copyNameWithDate(String name, String dateSuffix, java.util.Collection<String> taken) {
+        java.util.Set<String> lower = new java.util.HashSet<String>();
+        for (String s : taken) lower.add(s.toLowerCase(java.util.Locale.US));
+        StringBuilder b = new StringBuilder();
+        for (char c : name.toCharArray()) {
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ' ' || c == '-' || c == '_' || c == '.') {
+                if (!(c == ' ' && (b.length() == 0 || b.charAt(b.length() - 1) == ' '))) b.append(c);
+            }
+        }
+        String clean = b.toString().trim();
+        if (clean.isEmpty()) clean = "Untitled";
+        String s = "_" + dateSuffix;
+        String base = clean;
+        int max = 24;
+        if (base.length() + s.length() > max) base = base.substring(0, max - s.length()).trim();
+        String c = base + s;
+        if (!lower.contains(c.toLowerCase(java.util.Locale.US))) return c;
+        for (int n = 2; ; n++) {
+            String suffix = "_" + dateSuffix + "_" + n;
+            base = clean;
+            if (base.length() + suffix.length() > max) base = base.substring(0, max - suffix.length()).trim();
+            c = base + suffix;
+            if (!lower.contains(c.toLowerCase(java.util.Locale.US))) return c;
+        }
+    }
+
     private String dateMonth() {
         try {
             Class<?> tu = Class.forName("com.sony.scalar.sysutil.TimeUtil");
@@ -1743,7 +1770,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
         nameFor = purpose;
         nameEntry = purpose == NAME_RENAME ? NameEntry.of(library.get(recipe).name)
-                : NameEntry.blank(purpose == NAME_COPY ? CustomRecipes.copyNameWithDate(library.get(recipe).name, dateMonth(), library.customNames()) : CustomRecipes.defaultName(library.customNames()));
+                : NameEntry.blank(purpose == NAME_COPY ? copyNameWithDate(library.get(recipe).name, dateMonth(), library.customNames()) : CustomRecipes.defaultName(library.customNames()));
         nameOpen = true;
         renderName();
     }
