@@ -502,31 +502,56 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     @Override
     protected void onResume() {
         super.onResume();
-        load();
-        reloadCustoms();                                         // the card may have been edited over USB, or swapped
-        int last = library.indexOfCustom(prefs.getString("customRecipe", null));
-        if (last >= 0) recipe = last;
         lastPreviewLog = ""; origFlat = null;
         resumed = true;
-        try {
-            openCamera();
-            showRecipe();
-            Camera.Parameters p = camera.getParameters();
-            origFlat = p.flatten();
-            java.util.Map<String, String> wanted = Params.preview(edit);
-            for (java.util.Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
-            camera.setParameters(p);
-            lastAppliedWanted = new java.util.HashMap<String, String>(wanted);
-            holder.addCallback(this);
-            previewOk = true;
-        } catch (Throwable t) { previewOk = false; previewErr = String.valueOf(t); logPreview("camera did not open: " + previewErr); }
-        new Thread(new Runnable() { public void run() { logOpen(); } }).start();
-        render(); handler.post(exposurePoll);
-        if (!prefs.getBoolean("keysNoticeSeen", false)) {               // the keys moved in this build (issue #18): say so once
-            showToast(Keys.notice(), 8000);
-            new Thread(new Runnable() { public void run() { prefs.edit().putBoolean("keysNoticeSeen", true).commit(); } }).start();
-        }
-        if (Params.asksPictureProfileOff(cur)) openPrompt(P_PP, Params.PP_DEFAULT);   // every time: no recipe shows while it runs (#90)
+        showRecipe();
+        render(); // Instant UI display on frame 1!
+
+        // Defer heavy hardware initialization by 16ms so the first UI frame draws immediately
+        handler.post(new Runnable() {
+            public void run() {
+                if (!resumed) return;
+                load();
+                int last = library.indexOfCustom(prefs.getString("customRecipe", null));
+                if (last >= 0) recipe = last;
+                showRecipe();
+                try {
+                    openCamera();
+                    Camera.Parameters p = camera.getParameters();
+                    origFlat = p.flatten();
+                    java.util.Map<String, String> wanted = Params.preview(edit);
+                    for (java.util.Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
+                    camera.setParameters(p);
+                    lastAppliedWanted = new java.util.HashMap<String, String>(wanted);
+                    holder.addCallback(MainActivity.this);
+                    try {
+                        if (holder.getSurface() != null && holder.getSurface().isValid()) {
+                            camera.setPreviewDisplay(holder);
+                            camera.startPreview();
+                        }
+                    } catch (Throwable ignored) {}
+                    previewOk = true;
+                } catch (Throwable t) {
+                    previewOk = false;
+                    previewErr = String.valueOf(t);
+                    logPreview("camera did not open: " + previewErr);
+                }
+                render();
+                handler.post(exposurePoll);
+                if (!prefs.getBoolean("keysNoticeSeen", false)) {
+                    showToast(Keys.notice(), 8000);
+                    new Thread(new Runnable() { public void run() { prefs.edit().putBoolean("keysNoticeSeen", true).commit(); } }).start();
+                }
+                if (Params.asksPictureProfileOff(cur)) openPrompt(P_PP, Params.PP_DEFAULT);
+                new Thread(new Runnable() {
+                    public void run() {
+                        reloadCustoms();
+                        handler.post(new Runnable() { public void run() { if (resumed) render(); } });
+                        logOpen();
+                    }
+                }).start();
+            }
+        });
     }
 
     /** Sony's camera, and the plain Android one inside it the app drives */
@@ -2025,7 +2050,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private void scheduleApplyPreview() {
         handler.removeCallbacks(applyPreviewTask);
-        handler.postDelayed(applyPreviewTask, 250);
+        handler.postDelayed(applyPreviewTask, 600);
     }
 
     /** change the value of the focused chip */
@@ -2078,7 +2103,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void nextGroup(int dir) {
         browserGroup = Favorites.nextGroup(browserGroup, dir);
         int land = Favorites.landing(browserGroup, favs, library);
-        if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
+        if (land >= 0) { recipe = land; showRecipe(); }
         if (browserGroup == Favorites.CUSTOM) reportSkipped();
         render();
     }
@@ -2103,12 +2128,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (dir > 0) { // moving DOWN
             if (pos >= 0 && pos < count - 1) {
                 int to = Favorites.recipeAt(browserGroup, pos + 1, favs, library);
-                if (to >= 0) { recipe = to; showRecipe(); render(); scheduleApplyPreview(); return; }
+                if (to >= 0) { recipe = to; showRecipe(); render(); return; }
             } else {
                 // At bottom of current tab -> jump to first recipe of next tab!
                 browserGroup = Favorites.nextGroup(browserGroup, +1);
                 int land = Favorites.landing(browserGroup, favs, library);
-                if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
+                if (land >= 0) { recipe = land; showRecipe(); }
                 if (browserGroup == Favorites.CUSTOM) reportSkipped();
                 render();
                 return;
@@ -2116,17 +2141,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         } else if (dir < 0) { // moving UP
             if (pos > 0) {
                 int to = Favorites.recipeAt(browserGroup, pos - 1, favs, library);
-                if (to >= 0) { recipe = to; showRecipe(); render(); scheduleApplyPreview(); return; }
+                if (to >= 0) { recipe = to; showRecipe(); render(); return; }
             } else {
                 // At top of current tab -> jump to last recipe of previous tab!
                 browserGroup = Favorites.nextGroup(browserGroup, -1);
                 int prevCount = Favorites.groupCount(browserGroup, favs, library);
                 if (prevCount > 0) {
                     int to = Favorites.recipeAt(browserGroup, prevCount - 1, favs, library);
-                    if (to >= 0) { recipe = to; showRecipe(); scheduleApplyPreview(); }
+                    if (to >= 0) { recipe = to; showRecipe(); }
                 } else {
                     int land = Favorites.landing(browserGroup, favs, library);
-                    if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
+                    if (land >= 0) { recipe = land; showRecipe(); }
                 }
                 if (browserGroup == Favorites.CUSTOM) reportSkipped();
                 render();

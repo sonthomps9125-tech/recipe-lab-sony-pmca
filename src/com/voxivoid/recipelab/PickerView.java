@@ -15,8 +15,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Sony NEX-6 Theme Selection style Recipe Picker (16:9 Widescreen).
@@ -59,8 +57,6 @@ public class PickerView extends View {
     // Fast in-memory cache for decoded sample bitmaps (RGB_565)
     // Fast in-memory cache for decoded sample bitmaps (RGB_565, 160x107)
     private final Bitmap[] sampleCache = new Bitmap[78];
-    private final ExecutorService sampleLoader = Executors.newSingleThreadExecutor();
-    private volatile int requestedIdx = -1;
     private Bitmap appIconBitmap = null;
 
     public PickerView(Context c, AttributeSet a) {
@@ -135,34 +131,31 @@ public class PickerView extends View {
         invalidate();
     }
 
-    private Bitmap getSample(final int idx) {
+    private Bitmap getSample(int idx) {
         if (idx < 0 || idx >= 77) return null;
-        Bitmap cached = sampleCache[idx];
-        if (cached != null && !cached.isRecycled()) {
-            return cached;
+        if (sampleCache[idx] != null && !sampleCache[idx].isRecycled()) {
+            return sampleCache[idx];
         }
-
-        requestedIdx = idx;
-        sampleLoader.execute(new Runnable() {
-            public void run() {
-                if (requestedIdx != idx) return; // User already moved to another recipe
-                try {
-                    String pth = String.format(Locale.US, "samples/%02d.jpg", idx + 1);
-                    InputStream is = getContext().getAssets().open(pth);
-                    BitmapFactory.Options opts = new BitmapFactory.Options();
-                    opts.inPreferredConfig = Bitmap.Config.RGB_565; // 2x less RAM, 3x faster decoding
-                    opts.inSampleSize = 2; // Exact 160x107 match for screen preview box, 4x faster decode
-                    final Bitmap bm = BitmapFactory.decodeStream(is, null, opts);
-                    is.close();
-                    if (bm != null && requestedIdx == idx) {
-                        sampleCache[idx] = bm;
-                        postInvalidate();
-                    }
-                } catch (Throwable ignored) {}
+        try {
+            String pth = String.format(Locale.US, "samples/%02d.jpg", idx + 1);
+            InputStream is = getContext().getAssets().open(pth);
+            byte[] buf = new byte[is.available()];
+            int read = 0;
+            while (read < buf.length) {
+                int r = is.read(buf, read, buf.length - read);
+                if (r < 0) break;
+                read += r;
             }
-        });
-
-        return null;
+            is.close();
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            opts.inSampleSize = 2; // 160x107 exact 1:1 screen preview match (only 34KB)
+            Bitmap bm = BitmapFactory.decodeByteArray(buf, 0, read, opts);
+            sampleCache[idx] = bm;
+            return bm;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     @Override
