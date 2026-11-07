@@ -1941,7 +1941,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (exposureBar != null) exposureBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
         if (softKeys != null) {
             softKeys.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
-            softKeys.setLabels(focus ? "BACK" : "EXIT", "OPTION");
+            boolean inSidebar = (row != 0 || onActions || focus);
+            softKeys.setLabels(inSidebar ? "BACK" : "EXIT", "OPTION");
         }
         if (panelUp(overlay)) {
             panel.setVisibility(View.VISIBLE); mini.setVisibility(View.GONE);
@@ -2260,7 +2261,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (overlay == OV_BROWSER && sc != K_PLAY) return browserKey(sc);
         int step = turn(sc);
         if (step != 0) {                                         // any wheel or dial: along the line the highlight is on
-            if (focus) stepValue(step); else if (onButtons()) moveAction(step); else if (Params.onRecipeLine(overlay, row)) nextRecipe(step); else moveChip(step);
+            if (focus) stepValue(step);
+            else if (onButtons()) moveAction(step);
+            else if (Params.onRecipeLine(overlay, row)) nextRecipe(step);
+            else moveChipVertical(step);
             return true;
         }
         switch (sc) {
@@ -2269,13 +2273,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 if (onButtons()) {
                     moveAction(dir);
                 } else if (row != 0) {
-                    if (dir > 0 && actions().length > 0) {
-                        // Right jump directly down to Apply button!
+                    if (focus) {
+                        stepValue(dir);
+                    } else if (dir > 0 && actions().length > 0) {
+                        // When browsing chips (not focused), Right jumps down to Apply button!
                         onActions = true;
                         actionSel = 0;
                         render();
-                    } else {
-                        stepValue(dir);
                     }
                 } else {
                     nextRecipe(dir);
@@ -2306,12 +2310,33 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             case K_S1: try { camera.autoFocus(null); if (cameraEx != null) live.readParameters(cameraEx); updateExposureInfo(); } catch (Throwable t) { logPreview("autofocus refused: " + t); } return true;
             case K_S2: shootKey(); return true;
             case K_MENU: case K_SK1:
-                if (focus) { swallowMenuUp = true; setFocus(false); return true; }
+                if (row != 0 || onActions || focus) {
+                    swallowMenuUp = true;
+                    row = 0;
+                    onActions = false;
+                    setFocus(false);
+                    render();
+                    return true;
+                }
                 if (menuHoldArms(overlay, focus) && menuKeyHold.down(0) == Keys.Hold.ARM) handler.postDelayed(menuHold, HOLD_MS);
                 return true;                                     // exit waits for the release, unless the hold fires first
             case K_PLAY: return true;
         }
-        if (keyCode == KeyEvent.KEYCODE_BACK) { leave(); return true; }
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (row != 0 || onActions || focus) {
+                row = 0;
+                onActions = false;
+                setFocus(false);
+                render();
+                return true;
+            }
+            if (overlay == OV_BROWSER) {
+                openBrowser(false);
+                return true;
+            }
+            leave();
+            return true;
+        }
         return super.onKeyDown(keyCode, e);
     }
 
