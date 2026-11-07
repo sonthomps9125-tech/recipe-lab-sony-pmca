@@ -107,50 +107,42 @@
         android:background="#59000000"
         android:paddingLeft="2dp"
         android:paddingRight="2dp"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp">
-
-        <!-- Top Right SoftKey 1: EXIT ● (Aligned with SK1, standard Sony size) -->
-        <TextView
-            android:id="@+id/exit_btn"
-            android:layout_width="fill_parent"
-            android:layout_height="32dp"
-            android:gravity="right|center_vertical"
-            android:paddingRight="4dp"
-            android:text="EXIT ●"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFFFF"
-            android:shadowColor="#FF000000"
-            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="2" />
+        android:paddingTop="36dp"
+        android:paddingBottom="36dp">
 
         <!-- Hidden compat elements for MainActivity -->
+        <TextView
+            android:id="@+id/exit_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/option_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
         <TextView
             android:id="@+id/count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone" />
-
         <TextView
             android:id="@+id/name_original"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone" />
-
         <TextView
             android:id="@+id/meta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone" />
 
-        <!-- Vertical parameter icon container with 12dp top margin so tiles are not overlapped by top bar -->
+        <!-- Vertical parameter icon container with top & bottom margins -->
         <ScrollView
             android:id="@+id/chipscroll"
             android:layout_width="fill_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="8dp"
             android:scrollbars="none">
             <LinearLayout
                 android:id="@+id/chips"
@@ -171,26 +163,18 @@
             android:paddingBottom="2dp"
             android:visibility="gone" />
 
-        <!-- Bottom Right SoftKey 2: OPTION ● (Aligned with SK2, standard Sony size) -->
-        <TextView
-            android:id="@+id/option_btn"
-            android:layout_width="fill_parent"
-            android:layout_height="32dp"
-            android:gravity="right|center_vertical"
-            android:paddingRight="4dp"
-            android:text="OPTION ●"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#FFF2B85C"
-            android:shadowColor="#FF000000"
-            android:shadowDx="0" android:shadowDy="1" android:shadowRadius="2" />
-
         <com.voxivoid.recipelab.HintBar
             android:id="@+id/hints"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:visibility="gone" />
     </LinearLayout>
+
+    <!-- 5. SoftKeyHints: draws BACK/EXIT and OPTION · Edit with identical Sony Canvas styling as PickerView -->
+    <com.voxivoid.recipelab.SoftKeyHints
+        android:id="@+id/soft_keys"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
 
     <!-- Minimal overlay: recipe pill -->
     <TextView

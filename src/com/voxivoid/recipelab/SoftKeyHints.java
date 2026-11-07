@@ -9,11 +9,12 @@ import android.view.View;
 
 /**
  * Renders authentic Sony camera standard softkey indicators on the right edge:
- * Top (SK1): EXIT ● / BACK ●
- * Bottom (SK2): OPTION ● / Edit ●
+ * Top (SK1): EXIT ● / BACK ● (White text)
+ * Bottom (SK2): OPTION · Edit ● (Sony Amber text #F2B85C)
  */
 public class SoftKeyHints extends View {
-    private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint topText = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint botText = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint[] mark;
     private String top = "EXIT";
     private String bottom = "OPTION";
@@ -23,13 +24,19 @@ public class SoftKeyHints extends View {
         super(context, attrs);
         density = context.getResources().getDisplayMetrics().density;
         mark = Skin.metalMark();
-        text.setColor(Skin.WHITE);
-        text.setFakeBoldText(true);
-        text.setTextSize(12.0f * density); // Standard Sony font size
+
+        topText.setColor(Skin.WHITE);
+        topText.setFakeBoldText(true);
+        topText.setTextSize(12.0f * density);
+
+        botText.setColor(Skin.ORANGE); // Sony Amber #F2B85C
+        botText.setFakeBoldText(true);
+        botText.setTextSize(12.0f * density);
     }
 
     public void setTypeface(Typeface tf) {
-        text.setTypeface(tf);
+        topText.setTypeface(tf);
+        botText.setTypeface(tf);
         invalidate();
     }
 
@@ -48,19 +55,19 @@ public class SoftKeyHints extends View {
         float w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
 
-        // Both top and bottom buttons align at the exact same horizontal distance from the right edge
+        // Both buttons align at the exact same horizontal position x = w - 18dp
         float buttonX = w - 18.0f * density;
 
         // Top softkey (SK1): e.g. EXIT ● or BACK ●
         if (top != null && !top.isEmpty()) {
             float topY = 18.0f * density;
-            Skin.softKey(canvas, top, buttonX, topY, text, mark, density);
+            Skin.softKey(canvas, top, buttonX, topY, topText, mark, density);
         }
 
-        // Bottom softkey (SK2): e.g. OPTION ● or Edit ●
+        // Bottom softkey (SK2): e.g. OPTION · Edit ● in Sony Amber
         if (bottom != null && !bottom.isEmpty()) {
             float botY = h - 18.0f * density;
-            Skin.softKey(canvas, bottom, buttonX, botY, text, mark, density);
+            Skin.softKey(canvas, bottom, buttonX, botY, botText, mark, density);
         }
     }
 }

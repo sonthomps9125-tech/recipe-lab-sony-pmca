@@ -179,7 +179,7 @@ public class MenuView extends View {
         }
         c.drawLine(pad, legTop - 2 * d, w - pad, legTop - 2 * d, rule);
         legend.drawWrapped(c, pad, legTop, w - 2 * pad - 80 * d, hints);
-        Skin.softKey(c, "EXIT", w - 18 * d, h - 18 * d, head, softKeyMark, d);
+        Skin.softKey(c, "OPTION", w - 18 * d, h - 18 * d, head, softKeyMark, d);
     }
 
     /**
@@ -288,8 +288,8 @@ public class MenuView extends View {
     private void drawValue(Canvas c, String text, float right, float cy, boolean on) {
         float a = 4.5f * d, gap = 7 * d, tw = Math.max(value.measureText(text), value.measureText("English"));   // a steady width as it changes
         float rx = right - 4 * d, lx = rx - a - gap - tw - gap - a;
-        int col = on ? INK : 0xCCFFFFFF;
-        arrow.setColor(on ? INK : 0x88FFFFFF); value.setColor(col);
+        int col = 0xFFFFFFFF; // Pure white text on selected row
+        arrow.setColor(on ? ACCENT : 0x88FFFFFF); value.setColor(col);
         triangle(c, lx, cy, lx + a, cy - a, lx + a, cy + a);                        // left
         triangle(c, rx, cy, rx - a, cy - a, rx - a, cy + a);                        // right
         c.drawText(text, lx + a + gap + tw / 2, cy - (value.ascent() + value.descent()) / 2f, value);

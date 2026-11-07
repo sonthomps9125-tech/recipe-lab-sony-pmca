@@ -74,6 +74,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private ExposureBar exposureBar;
     private View headerBar, exitBtn, optionBtn;
     private final LiveInfo live = new LiveInfo();
+    private SoftKeyHints softKeys;
     private final ParamIconView[] paramIcons = new ParamIconView[N];
     private boolean swallowMenuUp = false;
     private TextView name, nameOriginal, badge, editedBadge, tag, count, meta, mini, toast;
@@ -194,6 +195,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         headerBar = findViewById(R.id.header_bar);
         exitBtn = findViewById(R.id.exit_btn);
         optionBtn = findViewById(R.id.option_btn);
+        softKeys = (SoftKeyHints) findViewById(R.id.soft_keys);
         if (exitBtn != null) exitBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { leave(); } });
         if (optionBtn != null) optionBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { optionEdit(); } });
         name = (TextView) findViewById(R.id.name);
@@ -228,6 +230,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 if (was != null) was.uncaughtException(th, t);
             }
         });
+        stageRecipe();
+        render(); // Instantly show UI frame on startup without waiting!
     }
 
     // ------------------------------------------------------------ the shareable log on the card (RECIPLAB/LOGS)
@@ -491,6 +495,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         UiFont.apply(findViewById(android.R.id.content), tf);
         picker.setTypeface(tf); prompt.setTypeface(tf); menu.setTypeface(tf); qr.setTypeface(tf); hints.setTypeface(tf); keyboard.setTypeface(tf);
         if (exposureBar != null) exposureBar.setTypeface(tf);
+        if (softKeys != null) softKeys.setTypeface(tf);
         for (ParamIconView pv : paramIcons) { if (pv != null) pv.setTypeface(tf); }
     }
 
@@ -505,16 +510,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         resumed = true;
         try {
             openCamera();
-            origFlat = camera.getParameters().flatten();
+            showRecipe();
+            Camera.Parameters p = camera.getParameters();
+            origFlat = p.flatten();
+            java.util.Map<String, String> wanted = Params.preview(edit);
+            for (java.util.Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
+            camera.setParameters(p);
+            lastAppliedWanted = new java.util.HashMap<String, String>(wanted);
             holder.addCallback(this);
             previewOk = true;
         } catch (Throwable t) { previewOk = false; previewErr = String.valueOf(t); logPreview("camera did not open: " + previewErr); }
         new Thread(new Runnable() { public void run() { logOpen(); } }).start();
-        showRecipe();                                          // with the edits last applied, when the camera still holds them
-        applyPreview(); render(); handler.post(exposurePoll);
+        render(); handler.post(exposurePoll);
         if (!prefs.getBoolean("keysNoticeSeen", false)) {               // the keys moved in this build (issue #18): say so once
             showToast(Keys.notice(), 8000);
-            prefs.edit().putBoolean("keysNoticeSeen", true).commit();
+            new Thread(new Runnable() { public void run() { prefs.edit().putBoolean("keysNoticeSeen", true).commit(); } }).start();
         }
         if (Params.asksPictureProfileOff(cur)) openPrompt(P_PP, Params.PP_DEFAULT);   // every time: no recipe shows while it runs (#90)
     }
@@ -1702,9 +1712,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         cardDir = findCardDir();
         CustomRecipes.Loaded l = CustomRecipes.load(cardDir);
         library.set(l.entries);
-        // each recipe's share link where a computer or a phone can copy it: the camera has no clipboard
-        try { if (CustomRecipes.writeLinks(cardDir, l.entries)) log(CardLog.QR, "links: " + CustomRecipes.path(CustomRecipes.LINKS) + " for " + l.entries.size() + " recipes"); }
-        catch (Throwable t) { log(CardLog.FAIL, "links: " + t); }
+        // each recipe's share link where a computer or a phone can copy it: offloaded to background to avoid startup SD lag
+        final File cDir = cardDir;
+        final List<CustomRecipes.Entry> cEntries = l.entries;
+        new Thread(new Runnable() {
+            public void run() {
+                try { if (CustomRecipes.writeLinks(cDir, cEntries)) log(CardLog.QR, "links: " + CustomRecipes.path(CustomRecipes.LINKS) + " for " + cEntries.size() + " recipes"); }
+                catch (Throwable t) { log(CardLog.FAIL, "links: " + t); }
+            }
+        }).start();
         if (!l.skipped.equals(skipped)) { skipped = l.skipped; skippedShown = false; }
         favs = Favorites.decode(favStored, library);
         if (keep != null) recipe = library.indexOfCustom(keep);
@@ -1906,13 +1922,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     // ------------------------------------------------------------ live preview (runtime params)
+    private java.util.Map<String, String> lastAppliedWanted = null;
+
     private void applyPreview() {
         if (camera == null) return;
         try {
+            java.util.Map<String, String> wanted = Params.preview(edit);
+            if (wanted.equals(lastAppliedWanted)) return;
             Camera.Parameters p = camera.getParameters();
-            Map<String, String> wanted = Params.preview(edit);
-            for (Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
+            for (java.util.Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
             camera.setParameters(p);
+            lastAppliedWanted = new java.util.HashMap<String, String>(wanted);
             previewOk = true;
         } catch (Throwable t) { previewOk = false; previewErr = String.valueOf(t.getMessage()); logPreview("parameters refused: " + previewErr); }
     }
@@ -1932,6 +1952,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (overlay == OV_BROWSER) { panel.setVisibility(View.GONE); mini.setVisibility(View.GONE); picker.set(recipe, browserCol, browserGroup, favs, library, cardDir != null); return; }
         if (headerBar != null) headerBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
         if (exposureBar != null) exposureBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
+        if (softKeys != null) {
+            softKeys.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
+            boolean inSidebar = (row != 0 || onActions || focus);
+            softKeys.setLabels(inSidebar ? "BACK" : "EXIT", "OPTION");
+        }
         if (panelUp(overlay)) {
             panel.setVisibility(View.VISIBLE); mini.setVisibility(View.GONE);
             name.setText(Recipes.displayName(r));
@@ -1998,13 +2023,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
     };
 
+    private void scheduleApplyPreview() {
+        handler.removeCallbacks(applyPreviewTask);
+        handler.postDelayed(applyPreviewTask, 250);
+    }
+
     /** change the value of the focused chip */
     private void stepValue(int dir) {
         if (row == 0) return;
         if (Params.step(edit, row, dir, recipeQuality(library.get(recipe)))) qualityChanged();
         render(); // Immediate 0ms UI update!
-        handler.removeCallbacks(applyPreviewTask);
-        handler.postDelayed(applyPreviewTask, 60); // 60ms debounce for camera hardware update
+        scheduleApplyPreview();
     }
 
     /** left / right on the edit buttons, wrapping */
@@ -2034,7 +2063,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
      */
     private void nextRecipe(final int dir) {
         unlessEditsLost(new Runnable() { public void run() {
-            recipe = Favorites.wheel(wheelGroup, recipe, dir, favs, library); showRecipe(); applyPreview(); render(); handler.post(exposurePoll);
+            recipe = Favorites.wheel(wheelGroup, recipe, dir, favs, library);
+            showRecipe();
+            render();
+            scheduleApplyPreview();
+            handler.post(exposurePoll);
         } });
     }
 
@@ -2045,7 +2078,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void nextGroup(int dir) {
         browserGroup = Favorites.nextGroup(browserGroup, dir);
         int land = Favorites.landing(browserGroup, favs, library);
-        if (land >= 0) { recipe = land; showRecipe(); applyPreview(); }
+        if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
         if (browserGroup == Favorites.CUSTOM) reportSkipped();
         render();
     }
@@ -2056,15 +2089,50 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         browserGroup = Favorites.openingGroup(favs, recipe, library, wheelGroup);
         browserCol = COL_RECIPES;
         if (open && browserGroup == Favorites.CUSTOM) reportSkipped();
+        if (!open) {
+            handler.removeCallbacks(applyPreviewTask);
+            applyPreview();
+        }
         render();
     }
 
-    /** recipe column: the next / previous recipe of the group the browser is on, wrapping */
-    private void nextInGroup(int dir) {
-        int to = Favorites.nextIn(browserGroup, recipe, dir, favs, library);
-        if (to < 0) return;
-        recipe = to;
-        showRecipe(); applyPreview(); render(); handler.post(exposurePoll);
+    /** Walks recipe by recipe: when reaching the end of a tab, wraps seamlessly to next/previous tab */
+    private void nextInGroupWithTabWrap(int dir) {
+        int count = Favorites.groupCount(browserGroup, favs, library);
+        int pos = Favorites.positionIn(browserGroup, recipe, favs, library);
+        if (dir > 0) { // moving DOWN
+            if (pos >= 0 && pos < count - 1) {
+                int to = Favorites.recipeAt(browserGroup, pos + 1, favs, library);
+                if (to >= 0) { recipe = to; showRecipe(); render(); scheduleApplyPreview(); return; }
+            } else {
+                // At bottom of current tab -> jump to first recipe of next tab!
+                browserGroup = Favorites.nextGroup(browserGroup, +1);
+                int land = Favorites.landing(browserGroup, favs, library);
+                if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
+                if (browserGroup == Favorites.CUSTOM) reportSkipped();
+                render();
+                return;
+            }
+        } else if (dir < 0) { // moving UP
+            if (pos > 0) {
+                int to = Favorites.recipeAt(browserGroup, pos - 1, favs, library);
+                if (to >= 0) { recipe = to; showRecipe(); render(); scheduleApplyPreview(); return; }
+            } else {
+                // At top of current tab -> jump to last recipe of previous tab!
+                browserGroup = Favorites.nextGroup(browserGroup, -1);
+                int prevCount = Favorites.groupCount(browserGroup, favs, library);
+                if (prevCount > 0) {
+                    int to = Favorites.recipeAt(browserGroup, prevCount - 1, favs, library);
+                    if (to >= 0) { recipe = to; showRecipe(); scheduleApplyPreview(); }
+                } else {
+                    int land = Favorites.landing(browserGroup, favs, library);
+                    if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
+                }
+                if (browserGroup == Favorites.CUSTOM) reportSkipped();
+                render();
+                return;
+            }
+        }
     }
 
     /** the recipe column is not reachable while the Favorites or Custom list is empty */
@@ -2079,7 +2147,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         rememberReopen();                                        // a recipe chosen in the list is where the app reopens
         wheelGroup = browserGroup;                               // and its group is what the wheel loops through
         prefs.edit().putString("wheelGroup", Favorites.wheelKey(wheelGroup)).commit();
-        openBrowser(false); showToast(Lang.t("status_recipe_previewed", Recipes.displayName(library.get(recipe))), 3000);
+        openBrowser(false);
+        handler.removeCallbacks(applyPreviewTask);
+        applyPreview();
+        showToast(Lang.t("status_recipe_previewed", Recipes.displayName(library.get(recipe))), 3000);
     }
 
     /** the reset question answered Reset: the factory look, stored — the same store as a centre press */
@@ -2125,9 +2196,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private boolean browserKey(int sc) {
         int dir = sc == K_UP ? -1 : sc == K_DOWN ? +1 : turn(sc);
-        if (dir != 0) { if (browserCol == COL_GROUPS) nextGroup(dir); else nextInGroup(dir); return true; }
+        if (dir != 0) {
+            nextInGroupWithTabWrap(dir);
+            return true;
+        }
         switch (sc) {
-            case K_LEFT: case K_RIGHT: if (browserCol == COL_RECIPES) { browserCol = COL_GROUPS; render(); } else enterRecipeColumn(); return true;
+            case K_LEFT: case K_RIGHT: {
+                int gDir = sc == K_RIGHT ? +1 : -1;
+                nextGroup(gDir);
+                return true;
+            }
             case K_MENU: case K_SK1:
                 // on a custom recipe MENU is press / hold: the release closes the list, a hold opens the recipe's options
                 if (onCustomRow()) { if (menuKeyHold.down(0) == Keys.Hold.ARM) handler.postDelayed(menuHold, HOLD_MS); return true; }
@@ -2196,7 +2274,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (overlay == OV_BROWSER && sc != K_PLAY) return browserKey(sc);
         int step = turn(sc);
         if (step != 0) {                                         // any wheel or dial: along the line the highlight is on
-            if (focus) stepValue(step); else if (onButtons()) moveAction(step); else if (Params.onRecipeLine(overlay, row)) nextRecipe(step); else moveChip(step);
+            if (focus) stepValue(step);
+            else if (onButtons()) moveAction(step);
+            else if (Params.onRecipeLine(overlay, row)) nextRecipe(step);
+            else moveChipVertical(step);
             return true;
         }
         switch (sc) {
@@ -2205,13 +2286,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 if (onButtons()) {
                     moveAction(dir);
                 } else if (row != 0) {
-                    if (dir > 0 && actions().length > 0) {
-                        // Right jump directly down to Apply button!
+                    if (focus) {
+                        stepValue(dir);
+                    } else if (dir > 0 && actions().length > 0) {
+                        // When browsing chips (not focused), Right jumps down to Apply button!
                         onActions = true;
                         actionSel = 0;
                         render();
-                    } else {
-                        stepValue(dir);
                     }
                 } else {
                     nextRecipe(dir);
@@ -2242,12 +2323,33 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             case K_S1: try { camera.autoFocus(null); if (cameraEx != null) live.readParameters(cameraEx); updateExposureInfo(); } catch (Throwable t) { logPreview("autofocus refused: " + t); } return true;
             case K_S2: shootKey(); return true;
             case K_MENU: case K_SK1:
-                if (focus) { swallowMenuUp = true; setFocus(false); return true; }
+                if (row != 0 || onActions || focus) {
+                    swallowMenuUp = true;
+                    row = 0;
+                    onActions = false;
+                    setFocus(false);
+                    render();
+                    return true;
+                }
                 if (menuHoldArms(overlay, focus) && menuKeyHold.down(0) == Keys.Hold.ARM) handler.postDelayed(menuHold, HOLD_MS);
                 return true;                                     // exit waits for the release, unless the hold fires first
             case K_PLAY: return true;
         }
-        if (keyCode == KeyEvent.KEYCODE_BACK) { leave(); return true; }
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (row != 0 || onActions || focus) {
+                row = 0;
+                onActions = false;
+                setFocus(false);
+                render();
+                return true;
+            }
+            if (overlay == OV_BROWSER) {
+                openBrowser(false);
+                return true;
+            }
+            leave();
+            return true;
+        }
         return super.onKeyDown(keyCode, e);
     }
 

@@ -15,6 +15,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Sony NEX-6 Theme Selection style Recipe Picker (16:9 Widescreen).
@@ -55,7 +57,10 @@ public class PickerView extends View {
     private boolean card = true;
 
     // Fast in-memory cache for decoded sample bitmaps (RGB_565)
+    // Fast in-memory cache for decoded sample bitmaps (RGB_565, 160x107)
     private final Bitmap[] sampleCache = new Bitmap[78];
+    private final ExecutorService sampleLoader = Executors.newSingleThreadExecutor();
+    private volatile int requestedIdx = -1;
     private Bitmap appIconBitmap = null;
 
     public PickerView(Context c, AttributeSet a) {
@@ -130,23 +135,34 @@ public class PickerView extends View {
         invalidate();
     }
 
-    private Bitmap getSample(int idx) {
+    private Bitmap getSample(final int idx) {
         if (idx < 0 || idx >= 77) return null;
-        if (sampleCache[idx] != null && !sampleCache[idx].isRecycled()) {
-            return sampleCache[idx];
+        Bitmap cached = sampleCache[idx];
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
         }
-        try {
-            String pth = String.format(Locale.US, "samples/%02d.jpg", idx + 1);
-            InputStream is = getContext().getAssets().open(pth);
-            BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inPreferredConfig = Bitmap.Config.RGB_565; // 2x less RAM, 3x faster decoding
-            Bitmap bm = BitmapFactory.decodeStream(is, null, opts);
-            is.close();
-            sampleCache[idx] = bm;
-            return bm;
-        } catch (Throwable t) {
-            return null;
-        }
+
+        requestedIdx = idx;
+        sampleLoader.execute(new Runnable() {
+            public void run() {
+                if (requestedIdx != idx) return; // User already moved to another recipe
+                try {
+                    String pth = String.format(Locale.US, "samples/%02d.jpg", idx + 1);
+                    InputStream is = getContext().getAssets().open(pth);
+                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                    opts.inPreferredConfig = Bitmap.Config.RGB_565; // 2x less RAM, 3x faster decoding
+                    opts.inSampleSize = 2; // Exact 160x107 match for screen preview box, 4x faster decode
+                    final Bitmap bm = BitmapFactory.decodeStream(is, null, opts);
+                    is.close();
+                    if (bm != null && requestedIdx == idx) {
+                        sampleCache[idx] = bm;
+                        postInvalidate();
+                    }
+                } catch (Throwable ignored) {}
+            }
+        });
+
+        return null;
     }
 
     @Override
@@ -156,7 +172,7 @@ public class PickerView extends View {
 
         int g = group;
         int count = Favorites.groupCount(g, favs, lib);
-        float colX = w * 0.65f; // Boundary between 3:2 detail area and right vertical carousel
+        float colX = w * 0.50f; // Boundary between 3:2 detail area and right vertical carousel
         float topH = 34 * d, footH = 32 * d;
         float listTop = topH + 8 * d, listBottom = h - footH - 4 * d, listH = listBottom - listTop;
 
@@ -193,13 +209,16 @@ public class PickerView extends View {
             if (orig != null && !orig.isEmpty()) desc = orig + "  (" + desc + ")";
             c.drawText(desc, lx, ly + 13 * d, subPaint);
 
-            // Cascading Sample Photo Showcase in center of 3:2 zone
-            float cx = colX * 0.48f, cy = topH + 85 * d;
-            drawCascadingSampleFrames(c, cx, cy, selected);
+            // Single center sample photo frame positioned exactly between subtitle and summary badges
+            float topBound = ly + 18 * d;
+            float bottomBound = listBottom - 38 * d;
+            float cx = colX * 0.50f;
+            float cy = (topBound + bottomBound) / 2.0f;
+            float maxH = bottomBound - topBound - 6 * d;
+            drawCenterSampleFrame(c, cx, cy, maxH, colX - 2 * pad, selected);
 
             // Bottom summary badges row: [RAW+J] [Style: ...] [WB: ...] [DRO: ...] [EV: ...]
-            float by = listBottom - 12 * d;
-            drawSummaryRow(c, lx, by, rc);
+            drawSummaryRow(c, lx, listBottom, rc, colX);
         }
 
         // ---- 3. Vertical Divider Rule
@@ -251,32 +270,24 @@ public class PickerView extends View {
 
         // Right footer SoftKey 2: OPTION · Edit ● (2.5x enlarged)
         head.setColor(ACCENT);
-        Skin.softKey(c, "OPTION · Edit", w - 18 * d, h - 18 * d, head, softKeyMark, d);
+        Skin.softKey(c, "OPTION", w - 18 * d, h - 18 * d, head, softKeyMark, d);
         head.setColor(0xFFFFFFFF);
     }
 
-    /** Draws cascading photo frames matching Sony Picture Effect+ style */
-    private void drawCascadingSampleFrames(Canvas c, float cx, float cy, int currentIdx) {
-        float fw = 150 * d, fh = 100 * d; // 3:2 main frame dimensions
+    /** Draws single center sample photo frame positioned exactly between subtitle and summary badges */
+    private void drawCenterSampleFrame(Canvas c, float cx, float cy, float maxH, float maxW, int currentIdx) {
+        float fh = Math.max(60 * d, Math.min(maxH, 115 * d));
+        float fw = fh * 1.5f; // 3:2 aspect ratio
+        if (fw > maxW) {
+            fw = maxW;
+            fh = fw / 1.5f;
+        }
 
-        // 1. Background side frames
-        r.set(cx - fw / 2 - 28 * d, cy - fh / 2 + 6 * d, cx + fw / 2 - 28 * d, cy + fh / 2 + 6 * d);
+        float mx = cx - fw / 2.0f, my = cy - fh / 2.0f;
+        r.set(mx - 2 * d, my - 2 * d, mx + fw + 2 * d, my + fh + 2 * d);
         c.drawRoundRect(r, 3 * d, 3 * d, frameShadow);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameFill);
-        frameStroke.setColor(0x66FFFFFF);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameStroke);
 
-        r.set(cx - fw / 2 + 28 * d, cy - fh / 2 + 6 * d, cx + fw / 2 + 28 * d, cy + fh / 2 + 6 * d);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameShadow);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameFill);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameStroke);
-
-        // 2. Main Center Frame
-        float mx = cx - fw / 2, my = cy - fh / 2;
-        r.set(mx - 3 * d, my - 3 * d, mx + fw + 3 * d, my + fh + 3 * d);
-        c.drawRoundRect(r, 4 * d, 4 * d, frameShadow);
-
-        // Draw central sample photograph
+        // Draw sample photograph
         Bitmap sampleBm = getSample(currentIdx);
         if (sampleBm != null && !sampleBm.isRecycled()) {
             srcRect.set(0, 0, sampleBm.getWidth(), sampleBm.getHeight());
@@ -284,38 +295,58 @@ public class PickerView extends View {
             c.drawBitmap(sampleBm, srcRect, dstRect, photoPaint);
         } else {
             r.set(mx, my, mx + fw, my + fh);
-            c.drawRoundRect(r, 3 * d, 3 * d, frameFill);
+            c.drawRoundRect(r, 2.5f * d, 2.5f * d, frameFill);
             Paint p = new Paint(small);
             p.setTextAlign(Paint.Align.CENTER);
             c.drawText("No Preview", cx, cy + 3 * d, p);
         }
 
-        // Crisp white border frame
+        // Crisp white photo border frame
         frameStroke.setColor(0xFFFFFFFF);
+        frameStroke.setStrokeWidth(1.2f * d);
         r.set(mx, my, mx + fw, my + fh);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameStroke);
+        c.drawRoundRect(r, 2.5f * d, 2.5f * d, frameStroke);
     }
 
-    /** Summary row of badges at bottom-left: [RAW+J] [Style: ...] [WB: ...] [DRO: ...] [EV: ...] */
-    private void drawSummaryRow(Canvas c, float x, float y, Recipes.Recipe rc) {
-        float rx = x;
-        rx = badge(c, rx, y, "RAW+J", 0xFF282828, 0xCCFFFFFF);
-        rx = badge(c, rx + 6 * d, y, "Style: " + Recipes.styleLabel(rc.style), 0xFF282828, ACCENT);
-        rx = badge(c, rx + 6 * d, y, rc.wbMode == 0 ? "WB: Keep" : rc.wbMode == 1 ? "WB: Auto" : "WB: " + rc.kelvin + "K", 0xFF282828, 0xCCFFFFFF);
-        rx = badge(c, rx + 6 * d, y, rc.dro == 0 ? "DRO: Off" : rc.dro == 1 ? "DRO: Auto" : "DRO: Lv" + rc.dro, 0xFF282828, 0xCCFFFFFF);
-        if (rc.ev != 0) {
-            badge(c, rx + 6 * d, y, "EV: " + Params.fmt(Params.R_EV, rc.ev, null), 0xFF282828, 0xCCFFFFFF);
-        }
+    /** Parameter summary badges arranged into TWO rows, with 3 boxes per row */
+    private void drawSummaryRow(Canvas c, float x, float listBottom, Recipes.Recipe rc, float colX) {
+        float totalW = colX - x - 8 * d;
+        float gap = 4 * d;
+        float boxW = (totalW - 2 * gap) / 3.0f;
+        float boxH = 15 * d;
+
+        float y1 = listBottom - 22 * d;
+        float y2 = listBottom - 5 * d;
+
+        // Row 1 (3 boxes): [Quality] [Style] [WB]
+        fixedBadge(c, x, y1, boxW, boxH, "RAW+J", 0xFF262626, 0xCCFFFFFF);
+        fixedBadge(c, x + boxW + gap, y1, boxW, boxH, Recipes.styleLabel(rc.style), 0xFF262626, ACCENT);
+        String wbText = rc.wbMode == 0 ? "WB: Keep" : rc.wbMode == 1 ? "WB: Auto" : rc.kelvin + "K";
+        fixedBadge(c, x + (boxW + gap) * 2, y1, boxW, boxH, wbText, 0xFF262626, 0xCCFFFFFF);
+
+        // Row 2 (3 boxes): [Sat/Con/Shp] [DRO] [EV]
+        String scsText = (rc.sat > 0 ? "+" : "") + rc.sat + "/" + (rc.con > 0 ? "+" : "") + rc.con + "/" + (rc.sharp > 0 ? "+" : "") + rc.sharp;
+        fixedBadge(c, x, y2, boxW, boxH, scsText, 0xFF262626, 0xCCFFFFFF);
+        String droText = rc.dro == 0 ? "DRO: Off" : rc.dro == 1 ? "DRO: Auto" : "DRO: Lv" + rc.dro;
+        fixedBadge(c, x + boxW + gap, y2, boxW, boxH, droText, 0xFF262626, 0xCCFFFFFF);
+        String evText = "EV " + Params.fmt(Params.R_EV, rc.ev, null);
+        fixedBadge(c, x + (boxW + gap) * 2, y2, boxW, boxH, evText, 0xFF262626, rc.ev != 0 ? ACCENT : 0xCCFFFFFF);
     }
 
-    private float badge(Canvas c, float x, float y, String text, int bgCol, int txtCol) {
-        float tw = small.measureText(text) + 10 * d;
-        r.set(x, y - 11 * d, x + tw, y + 4 * d);
+    private void fixedBadge(Canvas c, float bx, float by, float bw, float bh, String text, int bgCol, int txtCol) {
+        r.set(bx, by - bh + 2 * d, bx + bw, by + 2 * d);
         tagBg.setColor(bgCol);
-        c.drawRoundRect(r, 2 * d, 2 * d, tagBg);
-        small.setColor(txtCol);
-        c.drawText(text, x + 5 * d, y, small);
-        return x + tw;
+        c.drawRoundRect(r, 2.5f * d, 2.5f * d, tagBg);
+        frameStroke.setColor(0x44FFFFFF);
+        frameStroke.setStrokeWidth(0.8f * d);
+        c.drawRoundRect(r, 2.5f * d, 2.5f * d, frameStroke);
+
+        Paint p = new Paint(small);
+        p.setTextAlign(Paint.Align.CENTER);
+        p.setColor(txtCol);
+        float tw = p.measureText(text);
+        if (tw > bw - 4 * d) p.setTextSize(Math.max(6.5f * d, p.getTextSize() * (bw - 4 * d) / tw));
+        c.drawText(text, bx + bw / 2, by - 2.5f * d, p);
     }
 
     private void scrollbar(Canvas c, float x, float top, float height, float width, int first, int visible, int total) {
