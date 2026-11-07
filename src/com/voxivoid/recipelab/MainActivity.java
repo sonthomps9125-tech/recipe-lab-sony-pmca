@@ -230,6 +230,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 if (was != null) was.uncaughtException(th, t);
             }
         });
+        stageRecipe();
+        render(); // Instantly show UI frame on startup without waiting!
     }
 
     // ------------------------------------------------------------ the shareable log on the card (RECIPLAB/LOGS)
@@ -508,16 +510,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         resumed = true;
         try {
             openCamera();
-            origFlat = camera.getParameters().flatten();
+            showRecipe();
+            Camera.Parameters p = camera.getParameters();
+            origFlat = p.flatten();
+            java.util.Map<String, String> wanted = Params.preview(edit);
+            for (java.util.Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
+            camera.setParameters(p);
+            lastAppliedWanted = new java.util.HashMap<String, String>(wanted);
             holder.addCallback(this);
             previewOk = true;
         } catch (Throwable t) { previewOk = false; previewErr = String.valueOf(t); logPreview("camera did not open: " + previewErr); }
         new Thread(new Runnable() { public void run() { logOpen(); } }).start();
-        showRecipe();                                          // with the edits last applied, when the camera still holds them
-        applyPreview(); render(); handler.post(exposurePoll);
+        render(); handler.post(exposurePoll);
         if (!prefs.getBoolean("keysNoticeSeen", false)) {               // the keys moved in this build (issue #18): say so once
             showToast(Keys.notice(), 8000);
-            prefs.edit().putBoolean("keysNoticeSeen", true).commit();
+            new Thread(new Runnable() { public void run() { prefs.edit().putBoolean("keysNoticeSeen", true).commit(); } }).start();
         }
         if (Params.asksPictureProfileOff(cur)) openPrompt(P_PP, Params.PP_DEFAULT);   // every time: no recipe shows while it runs (#90)
     }
@@ -1705,9 +1712,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         cardDir = findCardDir();
         CustomRecipes.Loaded l = CustomRecipes.load(cardDir);
         library.set(l.entries);
-        // each recipe's share link where a computer or a phone can copy it: the camera has no clipboard
-        try { if (CustomRecipes.writeLinks(cardDir, l.entries)) log(CardLog.QR, "links: " + CustomRecipes.path(CustomRecipes.LINKS) + " for " + l.entries.size() + " recipes"); }
-        catch (Throwable t) { log(CardLog.FAIL, "links: " + t); }
+        // each recipe's share link where a computer or a phone can copy it: offloaded to background to avoid startup SD lag
+        final File cDir = cardDir;
+        final List<CustomRecipes.Entry> cEntries = l.entries;
+        new Thread(new Runnable() {
+            public void run() {
+                try { if (CustomRecipes.writeLinks(cDir, cEntries)) log(CardLog.QR, "links: " + CustomRecipes.path(CustomRecipes.LINKS) + " for " + cEntries.size() + " recipes"); }
+                catch (Throwable t) { log(CardLog.FAIL, "links: " + t); }
+            }
+        }).start();
         if (!l.skipped.equals(skipped)) { skipped = l.skipped; skippedShown = false; }
         favs = Favorites.decode(favStored, library);
         if (keep != null) recipe = library.indexOfCustom(keep);
