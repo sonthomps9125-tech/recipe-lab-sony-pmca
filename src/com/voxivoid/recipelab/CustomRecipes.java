@@ -400,6 +400,26 @@ final class CustomRecipes {
         }
     }
 
+    static String copyNameWithDate(String name, String dateSuffix, Collection<String> taken) {
+        Set<String> lower = lower(taken);
+        StringBuilder b = new StringBuilder();
+        for (char c : name.toCharArray()) if (nameChar(c) && !(c == ' ' && (b.length() == 0 || b.charAt(b.length() - 1) == ' '))) b.append(c);
+        String clean = b.toString().trim();
+        if (clean.isEmpty()) clean = UNTITLED;
+        String s = "_" + dateSuffix;
+        String base = clean;
+        if (base.length() + s.length() > NAME_MAX) base = base.substring(0, NAME_MAX - s.length()).trim();
+        String c = base + s;
+        if (!lower.contains(c.toLowerCase(Locale.US))) return c;
+        for (int n = 2; ; n++) {
+            String suffix = "_" + dateSuffix + "_" + n;
+            base = clean;
+            if (base.length() + suffix.length() > NAME_MAX) base = base.substring(0, NAME_MAX - suffix.length()).trim();
+            c = base + suffix;
+            if (!lower.contains(c.toLowerCase(Locale.US))) return c;
+        }
+    }
+
     /** a MENU hold on a custom recipe in the brand list: what can be done with it. Cancel is highlighted, so a stray centre press does nothing */
     static String optionsBody(String file) { return Lang.t("custom_options_body", path(file)); }
     static String[] options() {

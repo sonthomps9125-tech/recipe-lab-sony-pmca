@@ -29,6 +29,8 @@ public class MenuView extends View {
     private final Paint glyph = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF box = new RectF();
     private final Legend legend;
+    private final Paint[] softKeyMark;
+    private final Paint outline = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float d;
     private String title = "";
     private String[] labels = new String[0], details = new String[0], values = new String[0];
@@ -50,6 +52,7 @@ public class MenuView extends View {
         super(c, a);
         d = c.getResources().getDisplayMetrics().density;
         legend = new Legend(d);
+        softKeyMark = Skin.metalMark();
         bg.setColor(0xF0101010);
         head.setColor(ACCENT); head.setTextSize(9 * d); head.setFakeBoldText(true);
         item.setTextSize(13 * d); item.setFakeBoldText(true);
@@ -130,6 +133,7 @@ public class MenuView extends View {
             return;
         }
         c.drawText(title, pad, pad + 7 * d, head);
+        Skin.softKey(c, "BACK", w - 16 * d, pad + 7 * d, head, softKeyMark, d);
 
         float y = top + 8 * d, rh = rowHeight();
         int visible = Math.max(1, (int) ((bottom - y) / rh)), n = labels.length;
@@ -159,8 +163,16 @@ public class MenuView extends View {
         } else {
             for (int i = first; i < Math.min(n, first + visible); i++, y += rh) {
                 boolean on = i == selected;
-                if (on) { r.set(pad - 6 * d, y, right + 6 * d, y + rh - 3 * d); row.setColor(ACCENT); c.drawRoundRect(r, 4 * d, 4 * d, row); }
-                item.setColor(on ? INK : 0xFFFFFFFF);
+                if (on) {
+                    r.set(pad - 6 * d, y, right + 6 * d, y + rh - 3 * d);
+                    row.setColor(0x33F2B85C);
+                    c.drawRoundRect(r, 4 * d, 4 * d, row);
+                    outline.setColor(ACCENT);
+                    outline.setStyle(Paint.Style.STROKE);
+                    outline.setStrokeWidth(1.5f * d);
+                    c.drawRoundRect(r, 4 * d, 4 * d, outline);
+                }
+                item.setColor(on ? ACCENT : 0xFFFFFFFF);
                 float tx = pad;
                 if (icons != null && i < icons.length) {             // the row's icon, then its text beside it
                     glyph.setColor(on ? INK : ACCENT);
@@ -178,7 +190,8 @@ public class MenuView extends View {
             if (scroll) scrollbar(c, w - pad - sbW + 4 * d, listTop, visible * rh, sbW, first, visible, n);
         }
         c.drawLine(pad, legTop - 2 * d, w - pad, legTop - 2 * d, rule);
-        legend.drawWrapped(c, pad, legTop, w - 2 * pad, hints);
+        legend.drawWrapped(c, pad, legTop, w - 2 * pad - 80 * d, hints);
+        Skin.softKey(c, "EXIT", w - 16 * d, legTop + 8 * d, head, softKeyMark, d);
     }
 
     /**
