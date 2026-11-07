@@ -317,10 +317,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private final Runnable exposurePoll = new Runnable() {
         public void run() {
-            if (camera != null && panelUp(overlay)) {
-                updateExposureInfo();
-                handler.postDelayed(this, 500);
-            }
+            try {
+                if (camera != null && panelUp(overlay)) {
+                    updateExposureInfo();
+                    handler.postDelayed(this, 1000);
+                }
+            } catch (Throwable t) {}
         }
     };
 
@@ -328,6 +330,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void updateExposureInfo() {
         if (exposureBar == null) return;
         String ss = null, ap = null, iso = null;
+        try {
         if (live != null) {
             live.setEv(edit[R_EV] / 3.0f);
             String lSs = live.shutter();
@@ -382,6 +385,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
         String ev = Params.fmt(R_EV, edit[R_EV], edit);
         exposureBar.show(ss, ap, ev, iso);
+        } catch (Throwable t) {}
     }
 
 
@@ -505,6 +509,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             v.setLayoutParams(lp);
             chips.addView(v);
             paramIcons[i] = v;
+            chip[i] = v;
         }
     }
 
@@ -2016,20 +2021,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 actionBtn[i].setTextColor(on ? INK : WHITE);
             }
             for (int i : ORDER) {
-                chip[i].setVisibility(rowVisible(i) ? View.VISIBLE : View.GONE);
-                boolean sel = i == row && !onActions, ch = rowDirty(i), foc = sel && focus;
-                chip[i].setBackgroundResource(foc ? R.drawable.chip_sel : sel ? R.drawable.chip_hi : R.drawable.chip);
-                chipLabel[i].setText(Params.rowName(i));
-                chipLabel[i].setTextColor(foc ? INK : sel ? ACCENT : DIM);
-                chipValue[i].setTextColor(foc ? INK : ch ? ACCENT : WHITE);
-                chipValue[i].setText(Params.fmt(i, edit[i], edit));
+                if (paramIcons[i] == null) continue;
+                paramIcons[i].setVisibility(rowVisible(i) ? View.VISIBLE : View.GONE);
+                boolean sel = (i == row && !onActions);
+                boolean ch = rowDirty(i);
+                boolean foc = (sel && focus);
+                paramIcons[i].set(i, Params.fmt(i, edit[i], edit), sel, foc, ch);
             }
-            if (row == 0) chipScroll.post(new Runnable() { public void run() { chipScroll.smoothScrollTo(0, 0); } });
-            else {
-                final View c = chip[row];
+            if (row == 0) {
+                chipScroll.post(new Runnable() { public void run() { chipScroll.smoothScrollTo(0, 0); } });
+            } else if (paramIcons[row] != null) {
+                final View c = paramIcons[row];
                 chipScroll.post(new Runnable() { public void run() {
-                    int l = c.getLeft(), rgt = c.getRight(), sx = chipScroll.getScrollX(), w = chipScroll.getWidth();
-                    if (l < sx) chipScroll.smoothScrollTo(l - dp(8), 0); else if (rgt > sx + w) chipScroll.smoothScrollTo(rgt - w + dp(8), 0);
+                    int t = c.getTop(), bot = c.getBottom(), sy = chipScroll.getScrollY(), h = chipScroll.getHeight();
+                    if (t < sy) chipScroll.smoothScrollTo(0, t - dp(6));
+                    else if (bot > sy + h) chipScroll.smoothScrollTo(0, bot - h + dp(6));
                 } });
             }
             hints.setVisibility(View.GONE); updateExposureInfo();

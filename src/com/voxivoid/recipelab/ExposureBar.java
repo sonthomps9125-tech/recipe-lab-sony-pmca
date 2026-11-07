@@ -25,8 +25,16 @@ public class ExposureBar extends View {
     private String iso = "--";
     private final float density;
 
+    public ExposureBar(Context context) {
+        this(context, null);
+    }
+
     public ExposureBar(Context context, AttributeSet attrs) {
-        super(context, attrs);
+        this(context, attrs, 0);
+    }
+
+    public ExposureBar(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
         density = context.getResources().getDisplayMetrics().density;
 
         fade.setColor(0x59000000); // 65% transparent dark background
