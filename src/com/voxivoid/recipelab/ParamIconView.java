@@ -79,6 +79,9 @@ public class ParamIconView extends View {
             else if (v.equalsIgnoreCase("Rich-tone Mono")) v = "RTM";
             else if (v.equalsIgnoreCase("Off")) v = "OFF";
         }
+        if (this.row == row && this.selected == selected && this.focused == focused && this.dirty == dirty && v.equals(this.valueText)) {
+            return;
+        }
         this.valueText = v;
         this.selected = selected;
         this.focused = focused;

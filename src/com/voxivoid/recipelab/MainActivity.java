@@ -1909,13 +1909,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     // ------------------------------------------------------------ live preview (runtime params)
+    private java.util.Map<String, String> lastAppliedWanted = null;
+
     private void applyPreview() {
         if (camera == null) return;
         try {
+            java.util.Map<String, String> wanted = Params.preview(edit);
+            if (wanted.equals(lastAppliedWanted)) return;
             Camera.Parameters p = camera.getParameters();
-            Map<String, String> wanted = Params.preview(edit);
-            for (Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
+            for (java.util.Map.Entry<String, String> e : wanted.entrySet()) p.set(e.getKey(), e.getValue());
             camera.setParameters(p);
+            lastAppliedWanted = new java.util.HashMap<String, String>(wanted);
             previewOk = true;
         } catch (Throwable t) { previewOk = false; previewErr = String.valueOf(t.getMessage()); logPreview("parameters refused: " + previewErr); }
     }
@@ -2005,13 +2009,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
     };
 
+    private void scheduleApplyPreview() {
+        handler.removeCallbacks(applyPreviewTask);
+        handler.postDelayed(applyPreviewTask, 250);
+    }
+
     /** change the value of the focused chip */
     private void stepValue(int dir) {
         if (row == 0) return;
         if (Params.step(edit, row, dir, recipeQuality(library.get(recipe)))) qualityChanged();
         render(); // Immediate 0ms UI update!
-        handler.removeCallbacks(applyPreviewTask);
-        handler.postDelayed(applyPreviewTask, 60); // 60ms debounce for camera hardware update
+        scheduleApplyPreview();
     }
 
     /** left / right on the edit buttons, wrapping */
@@ -2041,7 +2049,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
      */
     private void nextRecipe(final int dir) {
         unlessEditsLost(new Runnable() { public void run() {
-            recipe = Favorites.wheel(wheelGroup, recipe, dir, favs, library); showRecipe(); applyPreview(); render(); handler.post(exposurePoll);
+            recipe = Favorites.wheel(wheelGroup, recipe, dir, favs, library);
+            showRecipe();
+            render();
+            scheduleApplyPreview();
+            handler.post(exposurePoll);
         } });
     }
 
@@ -2052,7 +2064,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void nextGroup(int dir) {
         browserGroup = Favorites.nextGroup(browserGroup, dir);
         int land = Favorites.landing(browserGroup, favs, library);
-        if (land >= 0) { recipe = land; showRecipe(); applyPreview(); }
+        if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
         if (browserGroup == Favorites.CUSTOM) reportSkipped();
         render();
     }
@@ -2063,6 +2075,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         browserGroup = Favorites.openingGroup(favs, recipe, library, wheelGroup);
         browserCol = COL_RECIPES;
         if (open && browserGroup == Favorites.CUSTOM) reportSkipped();
+        if (!open) {
+            handler.removeCallbacks(applyPreviewTask);
+            applyPreview();
+        }
         render();
     }
 
@@ -2073,12 +2089,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (dir > 0) { // moving DOWN
             if (pos >= 0 && pos < count - 1) {
                 int to = Favorites.recipeAt(browserGroup, pos + 1, favs, library);
-                if (to >= 0) { recipe = to; showRecipe(); applyPreview(); render(); return; }
+                if (to >= 0) { recipe = to; showRecipe(); render(); scheduleApplyPreview(); return; }
             } else {
                 // At bottom of current tab -> jump to first recipe of next tab!
                 browserGroup = Favorites.nextGroup(browserGroup, +1);
                 int land = Favorites.landing(browserGroup, favs, library);
-                if (land >= 0) { recipe = land; showRecipe(); applyPreview(); }
+                if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
                 if (browserGroup == Favorites.CUSTOM) reportSkipped();
                 render();
                 return;
@@ -2086,17 +2102,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         } else if (dir < 0) { // moving UP
             if (pos > 0) {
                 int to = Favorites.recipeAt(browserGroup, pos - 1, favs, library);
-                if (to >= 0) { recipe = to; showRecipe(); applyPreview(); render(); return; }
+                if (to >= 0) { recipe = to; showRecipe(); render(); scheduleApplyPreview(); return; }
             } else {
                 // At top of current tab -> jump to last recipe of previous tab!
                 browserGroup = Favorites.nextGroup(browserGroup, -1);
                 int prevCount = Favorites.groupCount(browserGroup, favs, library);
                 if (prevCount > 0) {
                     int to = Favorites.recipeAt(browserGroup, prevCount - 1, favs, library);
-                    if (to >= 0) { recipe = to; showRecipe(); applyPreview(); }
+                    if (to >= 0) { recipe = to; showRecipe(); scheduleApplyPreview(); }
                 } else {
                     int land = Favorites.landing(browserGroup, favs, library);
-                    if (land >= 0) { recipe = land; showRecipe(); applyPreview(); }
+                    if (land >= 0) { recipe = land; showRecipe(); scheduleApplyPreview(); }
                 }
                 if (browserGroup == Favorites.CUSTOM) reportSkipped();
                 render();
@@ -2117,7 +2133,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         rememberReopen();                                        // a recipe chosen in the list is where the app reopens
         wheelGroup = browserGroup;                               // and its group is what the wheel loops through
         prefs.edit().putString("wheelGroup", Favorites.wheelKey(wheelGroup)).commit();
-        openBrowser(false); showToast(Lang.t("status_recipe_previewed", Recipes.displayName(library.get(recipe))), 3000);
+        openBrowser(false);
+        handler.removeCallbacks(applyPreviewTask);
+        applyPreview();
+        showToast(Lang.t("status_recipe_previewed", Recipes.displayName(library.get(recipe))), 3000);
     }
 
     /** the reset question answered Reset: the factory look, stored — the same store as a centre press */
