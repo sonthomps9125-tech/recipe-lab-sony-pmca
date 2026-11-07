@@ -193,12 +193,15 @@ public class PickerView extends View {
             if (orig != null && !orig.isEmpty()) desc = orig + "  (" + desc + ")";
             c.drawText(desc, lx, ly + 13 * d, subPaint);
 
-            // Cascading Sample Photo Showcase in center of 3:2 zone
-            float cx = colX * 0.48f, cy = topH + 85 * d;
-            drawCascadingSampleFrames(c, cx, cy, selected);
+            // Single center sample photo frame positioned exactly between subtitle and summary badges
+            float topBound = ly + 18 * d;
+            float bottomBound = listBottom - 38 * d;
+            float cx = colX * 0.50f;
+            float cy = (topBound + bottomBound) / 2.0f;
+            float maxH = bottomBound - topBound - 6 * d;
+            drawCenterSampleFrame(c, cx, cy, maxH, colX - 2 * pad, selected);
 
             // Bottom summary badges row: [RAW+J] [Style: ...] [WB: ...] [DRO: ...] [EV: ...]
-            float by = listBottom - 12 * d;
             drawSummaryRow(c, lx, listBottom, rc, colX);
         }
 
@@ -251,32 +254,24 @@ public class PickerView extends View {
 
         // Right footer SoftKey 2: OPTION · Edit ● (2.5x enlarged)
         head.setColor(ACCENT);
-        Skin.softKey(c, "OPTION · Edit", w - 18 * d, h - 18 * d, head, softKeyMark, d);
+        Skin.softKey(c, "OPTION", w - 18 * d, h - 18 * d, head, softKeyMark, d);
         head.setColor(0xFFFFFFFF);
     }
 
-    /** Draws cascading photo frames matching Sony Picture Effect+ style */
-    private void drawCascadingSampleFrames(Canvas c, float cx, float cy, int currentIdx) {
-        float fw = 150 * d, fh = 100 * d; // 3:2 main frame dimensions
+    /** Draws single center sample photo frame positioned exactly between subtitle and summary badges */
+    private void drawCenterSampleFrame(Canvas c, float cx, float cy, float maxH, float maxW, int currentIdx) {
+        float fh = Math.max(60 * d, Math.min(maxH, 115 * d));
+        float fw = fh * 1.5f; // 3:2 aspect ratio
+        if (fw > maxW) {
+            fw = maxW;
+            fh = fw / 1.5f;
+        }
 
-        // 1. Background side frames
-        r.set(cx - fw / 2 - 28 * d, cy - fh / 2 + 6 * d, cx + fw / 2 - 28 * d, cy + fh / 2 + 6 * d);
+        float mx = cx - fw / 2.0f, my = cy - fh / 2.0f;
+        r.set(mx - 2 * d, my - 2 * d, mx + fw + 2 * d, my + fh + 2 * d);
         c.drawRoundRect(r, 3 * d, 3 * d, frameShadow);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameFill);
-        frameStroke.setColor(0x66FFFFFF);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameStroke);
 
-        r.set(cx - fw / 2 + 28 * d, cy - fh / 2 + 6 * d, cx + fw / 2 + 28 * d, cy + fh / 2 + 6 * d);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameShadow);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameFill);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameStroke);
-
-        // 2. Main Center Frame
-        float mx = cx - fw / 2, my = cy - fh / 2;
-        r.set(mx - 3 * d, my - 3 * d, mx + fw + 3 * d, my + fh + 3 * d);
-        c.drawRoundRect(r, 4 * d, 4 * d, frameShadow);
-
-        // Draw central sample photograph
+        // Draw sample photograph
         Bitmap sampleBm = getSample(currentIdx);
         if (sampleBm != null && !sampleBm.isRecycled()) {
             srcRect.set(0, 0, sampleBm.getWidth(), sampleBm.getHeight());
@@ -284,16 +279,17 @@ public class PickerView extends View {
             c.drawBitmap(sampleBm, srcRect, dstRect, photoPaint);
         } else {
             r.set(mx, my, mx + fw, my + fh);
-            c.drawRoundRect(r, 3 * d, 3 * d, frameFill);
+            c.drawRoundRect(r, 2.5f * d, 2.5f * d, frameFill);
             Paint p = new Paint(small);
             p.setTextAlign(Paint.Align.CENTER);
             c.drawText("No Preview", cx, cy + 3 * d, p);
         }
 
-        // Crisp white border frame
+        // Crisp white photo border frame
         frameStroke.setColor(0xFFFFFFFF);
+        frameStroke.setStrokeWidth(1.2f * d);
         r.set(mx, my, mx + fw, my + fh);
-        c.drawRoundRect(r, 3 * d, 3 * d, frameStroke);
+        c.drawRoundRect(r, 2.5f * d, 2.5f * d, frameStroke);
     }
 
     /** Parameter summary badges arranged into TWO rows, with 3 boxes per row */

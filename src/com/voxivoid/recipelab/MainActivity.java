@@ -1937,7 +1937,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (exposureBar != null) exposureBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
         if (softKeys != null) {
             softKeys.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
-            softKeys.setLabels(focus ? "BACK" : "EXIT", "OPTION · Edit");
+            softKeys.setLabels(focus ? "BACK" : "EXIT", "OPTION");
         }
         if (panelUp(overlay)) {
             panel.setVisibility(View.VISIBLE); mini.setVisibility(View.GONE);

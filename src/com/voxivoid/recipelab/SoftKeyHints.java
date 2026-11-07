@@ -17,7 +17,7 @@ public class SoftKeyHints extends View {
     private final Paint botText = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint[] mark;
     private String top = "EXIT";
-    private String bottom = "OPTION · Edit";
+    private String bottom = "OPTION";
     private final float density;
 
     public SoftKeyHints(Context context, AttributeSet attrs) {
