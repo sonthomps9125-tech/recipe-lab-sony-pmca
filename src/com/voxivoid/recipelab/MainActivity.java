@@ -74,6 +74,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private ExposureBar exposureBar;
     private View headerBar, exitBtn, optionBtn;
     private final LiveInfo live = new LiveInfo();
+    private SoftKeyHints softKeys;
     private final ParamIconView[] paramIcons = new ParamIconView[N];
     private boolean swallowMenuUp = false;
     private TextView name, nameOriginal, badge, editedBadge, tag, count, meta, mini, toast;
@@ -194,6 +195,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         headerBar = findViewById(R.id.header_bar);
         exitBtn = findViewById(R.id.exit_btn);
         optionBtn = findViewById(R.id.option_btn);
+        softKeys = (SoftKeyHints) findViewById(R.id.soft_keys);
         if (exitBtn != null) exitBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { leave(); } });
         if (optionBtn != null) optionBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { optionEdit(); } });
         name = (TextView) findViewById(R.id.name);
@@ -491,6 +493,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         UiFont.apply(findViewById(android.R.id.content), tf);
         picker.setTypeface(tf); prompt.setTypeface(tf); menu.setTypeface(tf); qr.setTypeface(tf); hints.setTypeface(tf); keyboard.setTypeface(tf);
         if (exposureBar != null) exposureBar.setTypeface(tf);
+        if (softKeys != null) softKeys.setTypeface(tf);
         for (ParamIconView pv : paramIcons) { if (pv != null) pv.setTypeface(tf); }
     }
 
@@ -1932,6 +1935,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (overlay == OV_BROWSER) { panel.setVisibility(View.GONE); mini.setVisibility(View.GONE); picker.set(recipe, browserCol, browserGroup, favs, library, cardDir != null); return; }
         if (headerBar != null) headerBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
         if (exposureBar != null) exposureBar.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
+        if (softKeys != null) {
+            softKeys.setVisibility(panelUp(overlay) ? View.VISIBLE : View.GONE);
+            softKeys.setLabels(focus ? "BACK" : "EXIT", "OPTION · Edit");
+        }
         if (panelUp(overlay)) {
             panel.setVisibility(View.VISIBLE); mini.setVisibility(View.GONE);
             name.setText(Recipes.displayName(r));
@@ -2059,12 +2066,43 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         render();
     }
 
-    /** recipe column: the next / previous recipe of the group the browser is on, wrapping */
-    private void nextInGroup(int dir) {
-        int to = Favorites.nextIn(browserGroup, recipe, dir, favs, library);
-        if (to < 0) return;
-        recipe = to;
-        showRecipe(); applyPreview(); render(); handler.post(exposurePoll);
+    /** Walks recipe by recipe: when reaching the end of a tab, wraps seamlessly to next/previous tab */
+    private void nextInGroupWithTabWrap(int dir) {
+        int count = Favorites.groupCount(browserGroup, favs, library);
+        int pos = Favorites.positionIn(browserGroup, recipe, favs, library);
+        if (dir > 0) { // moving DOWN
+            if (pos >= 0 && pos < count - 1) {
+                int to = Favorites.recipeAt(browserGroup, pos + 1, favs, library);
+                if (to >= 0) { recipe = to; showRecipe(); applyPreview(); render(); return; }
+            } else {
+                // At bottom of current tab -> jump to first recipe of next tab!
+                browserGroup = Favorites.nextGroup(browserGroup, +1);
+                int land = Favorites.landing(browserGroup, favs, library);
+                if (land >= 0) { recipe = land; showRecipe(); applyPreview(); }
+                if (browserGroup == Favorites.CUSTOM) reportSkipped();
+                render();
+                return;
+            }
+        } else if (dir < 0) { // moving UP
+            if (pos > 0) {
+                int to = Favorites.recipeAt(browserGroup, pos - 1, favs, library);
+                if (to >= 0) { recipe = to; showRecipe(); applyPreview(); render(); return; }
+            } else {
+                // At top of current tab -> jump to last recipe of previous tab!
+                browserGroup = Favorites.nextGroup(browserGroup, -1);
+                int prevCount = Favorites.groupCount(browserGroup, favs, library);
+                if (prevCount > 0) {
+                    int to = Favorites.recipeAt(browserGroup, prevCount - 1, favs, library);
+                    if (to >= 0) { recipe = to; showRecipe(); applyPreview(); }
+                } else {
+                    int land = Favorites.landing(browserGroup, favs, library);
+                    if (land >= 0) { recipe = land; showRecipe(); applyPreview(); }
+                }
+                if (browserGroup == Favorites.CUSTOM) reportSkipped();
+                render();
+                return;
+            }
+        }
     }
 
     /** the recipe column is not reachable while the Favorites or Custom list is empty */
@@ -2125,9 +2163,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private boolean browserKey(int sc) {
         int dir = sc == K_UP ? -1 : sc == K_DOWN ? +1 : turn(sc);
-        if (dir != 0) { if (browserCol == COL_GROUPS) nextGroup(dir); else nextInGroup(dir); return true; }
+        if (dir != 0) {
+            nextInGroupWithTabWrap(dir);
+            return true;
+        }
         switch (sc) {
-            case K_LEFT: case K_RIGHT: if (browserCol == COL_RECIPES) { browserCol = COL_GROUPS; render(); } else enterRecipeColumn(); return true;
+            case K_LEFT: case K_RIGHT: {
+                int gDir = sc == K_RIGHT ? +1 : -1;
+                nextGroup(gDir);
+                return true;
+            }
             case K_MENU: case K_SK1:
                 // on a custom recipe MENU is press / hold: the release closes the list, a hold opens the recipe's options
                 if (onCustomRow()) { if (menuKeyHold.down(0) == Keys.Hold.ARM) handler.postDelayed(menuHold, HOLD_MS); return true; }

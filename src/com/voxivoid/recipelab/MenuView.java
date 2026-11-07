@@ -179,7 +179,7 @@ public class MenuView extends View {
         }
         c.drawLine(pad, legTop - 2 * d, w - pad, legTop - 2 * d, rule);
         legend.drawWrapped(c, pad, legTop, w - 2 * pad - 80 * d, hints);
-        Skin.softKey(c, "EXIT", w - 18 * d, h - 18 * d, head, softKeyMark, d);
+        Skin.softKey(c, "OPTION · Edit", w - 18 * d, h - 18 * d, head, softKeyMark, d);
     }
 
     /**

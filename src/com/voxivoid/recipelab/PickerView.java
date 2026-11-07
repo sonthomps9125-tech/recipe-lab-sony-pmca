@@ -156,7 +156,7 @@ public class PickerView extends View {
 
         int g = group;
         int count = Favorites.groupCount(g, favs, lib);
-        float colX = w * 0.65f; // Boundary between 3:2 detail area and right vertical carousel
+        float colX = w * 0.50f; // Boundary between 3:2 detail area and right vertical carousel
         float topH = 34 * d, footH = 32 * d;
         float listTop = topH + 8 * d, listBottom = h - footH - 4 * d, listH = listBottom - listTop;
 
@@ -199,7 +199,7 @@ public class PickerView extends View {
 
             // Bottom summary badges row: [RAW+J] [Style: ...] [WB: ...] [DRO: ...] [EV: ...]
             float by = listBottom - 12 * d;
-            drawSummaryRow(c, lx, by, rc);
+            drawSummaryRow(c, lx, listBottom, rc, colX);
         }
 
         // ---- 3. Vertical Divider Rule
@@ -296,26 +296,45 @@ public class PickerView extends View {
         c.drawRoundRect(r, 3 * d, 3 * d, frameStroke);
     }
 
-    /** Summary row of badges at bottom-left: [RAW+J] [Style: ...] [WB: ...] [DRO: ...] [EV: ...] */
-    private void drawSummaryRow(Canvas c, float x, float y, Recipes.Recipe rc) {
-        float rx = x;
-        rx = badge(c, rx, y, "RAW+J", 0xFF282828, 0xCCFFFFFF);
-        rx = badge(c, rx + 6 * d, y, "Style: " + Recipes.styleLabel(rc.style), 0xFF282828, ACCENT);
-        rx = badge(c, rx + 6 * d, y, rc.wbMode == 0 ? "WB: Keep" : rc.wbMode == 1 ? "WB: Auto" : "WB: " + rc.kelvin + "K", 0xFF282828, 0xCCFFFFFF);
-        rx = badge(c, rx + 6 * d, y, rc.dro == 0 ? "DRO: Off" : rc.dro == 1 ? "DRO: Auto" : "DRO: Lv" + rc.dro, 0xFF282828, 0xCCFFFFFF);
-        if (rc.ev != 0) {
-            badge(c, rx + 6 * d, y, "EV: " + Params.fmt(Params.R_EV, rc.ev, null), 0xFF282828, 0xCCFFFFFF);
-        }
+    /** Parameter summary badges arranged into TWO rows, with 3 boxes per row */
+    private void drawSummaryRow(Canvas c, float x, float listBottom, Recipes.Recipe rc, float colX) {
+        float totalW = colX - x - 8 * d;
+        float gap = 4 * d;
+        float boxW = (totalW - 2 * gap) / 3.0f;
+        float boxH = 15 * d;
+
+        float y1 = listBottom - 22 * d;
+        float y2 = listBottom - 5 * d;
+
+        // Row 1 (3 boxes): [Quality] [Style] [WB]
+        fixedBadge(c, x, y1, boxW, boxH, "RAW+J", 0xFF262626, 0xCCFFFFFF);
+        fixedBadge(c, x + boxW + gap, y1, boxW, boxH, Recipes.styleLabel(rc.style), 0xFF262626, ACCENT);
+        String wbText = rc.wbMode == 0 ? "WB: Keep" : rc.wbMode == 1 ? "WB: Auto" : rc.kelvin + "K";
+        fixedBadge(c, x + (boxW + gap) * 2, y1, boxW, boxH, wbText, 0xFF262626, 0xCCFFFFFF);
+
+        // Row 2 (3 boxes): [Sat/Con/Shp] [DRO] [EV]
+        String scsText = (rc.sat > 0 ? "+" : "") + rc.sat + "/" + (rc.con > 0 ? "+" : "") + rc.con + "/" + (rc.sharp > 0 ? "+" : "") + rc.sharp;
+        fixedBadge(c, x, y2, boxW, boxH, scsText, 0xFF262626, 0xCCFFFFFF);
+        String droText = rc.dro == 0 ? "DRO: Off" : rc.dro == 1 ? "DRO: Auto" : "DRO: Lv" + rc.dro;
+        fixedBadge(c, x + boxW + gap, y2, boxW, boxH, droText, 0xFF262626, 0xCCFFFFFF);
+        String evText = "EV " + Params.fmt(Params.R_EV, rc.ev, null);
+        fixedBadge(c, x + (boxW + gap) * 2, y2, boxW, boxH, evText, 0xFF262626, rc.ev != 0 ? ACCENT : 0xCCFFFFFF);
     }
 
-    private float badge(Canvas c, float x, float y, String text, int bgCol, int txtCol) {
-        float tw = small.measureText(text) + 10 * d;
-        r.set(x, y - 11 * d, x + tw, y + 4 * d);
+    private void fixedBadge(Canvas c, float bx, float by, float bw, float bh, String text, int bgCol, int txtCol) {
+        r.set(bx, by - bh + 2 * d, bx + bw, by + 2 * d);
         tagBg.setColor(bgCol);
-        c.drawRoundRect(r, 2 * d, 2 * d, tagBg);
-        small.setColor(txtCol);
-        c.drawText(text, x + 5 * d, y, small);
-        return x + tw;
+        c.drawRoundRect(r, 2.5f * d, 2.5f * d, tagBg);
+        frameStroke.setColor(0x44FFFFFF);
+        frameStroke.setStrokeWidth(0.8f * d);
+        c.drawRoundRect(r, 2.5f * d, 2.5f * d, frameStroke);
+
+        Paint p = new Paint(small);
+        p.setTextAlign(Paint.Align.CENTER);
+        p.setColor(txtCol);
+        float tw = p.measureText(text);
+        if (tw > bw - 4 * d) p.setTextSize(Math.max(6.5f * d, p.getTextSize() * (bw - 4 * d) / tw));
+        c.drawText(text, bx + bw / 2, by - 2.5f * d, p);
     }
 
     private void scrollbar(Canvas c, float x, float top, float height, float width, int first, int visible, int total) {

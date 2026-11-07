@@ -48,7 +48,38 @@ public class ParamIconView extends View {
 
     public void set(int row, String value, boolean selected, boolean focused, boolean dirty) {
         this.row = row;
-        this.valueText = value != null ? value : "";
+        String v = value != null ? value : "";
+        // Clean compact formatting to prevent any smearing/overlapping
+        if (row == Params.R_QUAL) {
+            if (v.equalsIgnoreCase("RAW+JPG") || v.equalsIgnoreCase("RAW+J")) v = "RAW+J";
+            else if (v.equalsIgnoreCase("RAW")) v = "RAW";
+            else if (v.equalsIgnoreCase("FINE") || v.equalsIgnoreCase("EXTRA FINE")) v = "FINE";
+            else if (v.equalsIgnoreCase("STANDARD")) v = "STD";
+        } else if (row == Params.R_STYLE) {
+            if (v.equalsIgnoreCase("Standard")) v = "STD";
+            else if (v.equalsIgnoreCase("Portrait")) v = "PT";
+            else if (v.equalsIgnoreCase("Neutral")) v = "NT";
+            else if (v.equalsIgnoreCase("Vivid")) v = "VV";
+            else if (v.equalsIgnoreCase("Sunset")) v = "SUN";
+            else if (v.equalsIgnoreCase("Night View") || v.equalsIgnoreCase("Night")) v = "NIGHT";
+            else if (v.equalsIgnoreCase("Autumn leaves") || v.equalsIgnoreCase("Autumn")) v = "AUT";
+            else if (v.equalsIgnoreCase("Black & White") || v.equalsIgnoreCase("B&W")) v = "B&W";
+            else if (v.equalsIgnoreCase("Sepia")) v = "SEP";
+            else if (v.equalsIgnoreCase("Film-like")) v = "FL";
+            else if (v.equalsIgnoreCase("Instant")) v = "IN";
+            else if (v.equalsIgnoreCase("Soft High-key")) v = "SH";
+        } else if (row == Params.R_PE) {
+            if (v.equalsIgnoreCase("Toy Camera")) v = "TOY";
+            else if (v.equalsIgnoreCase("Pop Color")) v = "POP";
+            else if (v.equalsIgnoreCase("Posterization")) v = "POST";
+            else if (v.equalsIgnoreCase("Retro Photo")) v = "RETRO";
+            else if (v.equalsIgnoreCase("Soft High-key")) v = "SH";
+            else if (v.equalsIgnoreCase("Partial Color")) v = "PART";
+            else if (v.equalsIgnoreCase("High Contrast Mono")) v = "HCM";
+            else if (v.equalsIgnoreCase("Rich-tone Mono")) v = "RTM";
+            else if (v.equalsIgnoreCase("Off")) v = "OFF";
+        }
+        this.valueText = v;
         this.selected = selected;
         this.focused = focused;
         this.dirty = dirty;
@@ -98,9 +129,15 @@ public class ParamIconView extends View {
         float cx = 11 * density, cy = h / 2;
         drawIcon(c, cx, cy);
 
-        // Draw value text at bottom right
-        textPaint.setTextSize(8.5f * density);
-        float tx = w - 3 * density;
+        // Draw value text at bottom right (auto-scaled so it never touches icon)
+        float maxTextW = w - 21.0f * density;
+        float ts = 8.5f * density;
+        textPaint.setTextSize(ts);
+        while (textPaint.measureText(valueText) > maxTextW && ts > 5.5f * density) {
+            ts -= 0.5f * density;
+            textPaint.setTextSize(ts);
+        }
+        float tx = w - 3.0f * density;
         float ty = h - 3.5f * density;
         c.drawText(valueText, tx, ty, textPaint);
 
