@@ -236,9 +236,26 @@ public class PickerView extends View {
                     item.setFakeBoldText(false);
                 }
                 Recipes.Recipe rk = lib.get(idx);
-                c.drawText(Recipes.displayName(rk), colX + 14 * d, y + 16 * d, item);
+                boolean isFav = favs.contains(idx);
+                float maxItemW = (xr - (isFav ? 16 * d : 5 * d)) - (colX + 12 * d);
+                String rName = Recipes.displayName(rk);
+                float baseItemSize = 11.5f * d;
+                item.setTextSize(baseItemSize);
+                float rw = item.measureText(rName);
+                if (rw > maxItemW && rw > 0) {
+                    float scaled = Math.max(8.2f * d, baseItemSize * maxItemW / rw);
+                    item.setTextSize(scaled);
+                    if (item.measureText(rName) > maxItemW) {
+                        while (rName.length() > 3 && item.measureText(rName + "..") > maxItemW) {
+                            rName = rName.substring(0, rName.length() - 1);
+                        }
+                        rName = rName + "..";
+                    }
+                }
+                c.drawText(rName, colX + 12 * d, y + 16 * d, item);
+                item.setTextSize(baseItemSize);
 
-                if (favs.contains(idx)) {
+                if (isFav) {
                     star.setColor(on ? ACCENT : 0x88FFFFFF);
                     Legend.star(c, xr - 8 * d, y + 12 * d, 4.5f * d, star);
                 }
